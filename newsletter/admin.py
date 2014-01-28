@@ -25,7 +25,7 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from sorl.thumbnail.admin import AdminImageMixin
 
 from .models import (
-    Newsletter, Subscription, Article, Message, Submission
+    Newsletter, Subscription, Article, Message, Submission, Receipt
 )
 
 from django.utils.timezone import now
@@ -83,6 +83,13 @@ class SubmissionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     list_filter = ('newsletter', 'publish', 'sent')
     save_as = True
     filter_horizontal = ('subscriptions',)
+    actions = ['send_submission']
+
+    """ Actions """
+    def send_submission(self, request, queryset):
+        for submission in queryset:
+            submission.send_submission()
+    send_submission.short_description = _("Send Submission")
 
     """ List extensions """
     def admin_message(self, obj):
@@ -485,7 +492,24 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 
         return my_urls + urls
 
+class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
+    list_display = (
+        'submission', 'user', 'create_date', 'sent_status',
+        'viewed', 'view_count'
+    )
+    list_display_links = ('submission', 'user')
+    list_filter = (
+        'submission', 'user', 'sent_status', 'viewed'
+    )
+    search_fields = (
+        'submission', 'user__email'
+    )
+    readonly_fields = (
+        'create_date', 'viewed', 'view_count', 'sent_status'
+    )
+    
 
+admin.site.register(Receipt, ReceiptAdmin)
 admin.site.register(Newsletter, NewsletterAdmin)
 admin.site.register(Submission, SubmissionAdmin)
 admin.site.register(Message, MessageAdmin)

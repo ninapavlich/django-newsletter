@@ -629,6 +629,21 @@ class Submission(models.Model):
         submission.subscriptions = message.newsletter.get_subscriptions()
         return submission
 
+    def send_submission(self):
+
+        if self.prepared == False:
+            return
+        if self.sent == True:
+            return
+        if self.sending == True:
+            return
+        if self.publish_date > now():
+            return
+
+        self.submit()
+
+
+
     def save(self):
         """ Set the newsletter from associated message upon saving. """
         assert self.message.newsletter
@@ -689,3 +704,33 @@ class Submission(models.Model):
         default=False, verbose_name=_('sending'),
         db_index=True, editable=False
     )
+
+
+NOT_SENT = 0
+SENT = 1
+ERROR_SENDING = 2
+SENDING_STATUS_CHOICES = (
+    (NOT_SENT, 'Not Sent'),
+    (SENT, 'Sent'),
+    (ERROR_SENDING, 'Error Sending'),
+)
+
+class Receipt(models.Model):
+
+    submission = models.ForeignKey('Submission')
+    user = models.ForeignKey(User, blank=True, null=True, verbose_name=_('user'), db_index=True)
+    create_date = models.DateTimeField(editable=False, default=now)
+    sent_status = models.IntegerField(default=0, choices=SENDING_STATUS_CHOICES, db_index=True)
+
+    viewed = models.BooleanField(default=False, db_index=True)
+    view_count = models.IntegerField(default=0)
+
+    def view(self):
+        self.view_count = self.view_count+1
+        self.viewed = True
+        self.save()
+
+
+
+
+
