@@ -556,6 +556,10 @@ class Submission(models.Model):
                 self.message.newsletter.get_templates('message')
 
             for subscription in subscriptions:
+
+                receipt = Receipt(submission=self, user=subscription.user)
+                receipt.save()
+
                 variable_dict = {
                     'subscription': subscription,
                     'site': Site.objects.get_current(),
@@ -564,7 +568,8 @@ class Submission(models.Model):
                     'newsletter': self.newsletter,
                     'date': self.publish_date,
                     'STATIC_URL': settings.STATIC_URL,
-                    'MEDIA_URL': settings.MEDIA_URL
+                    'MEDIA_URL': settings.MEDIA_URL,
+                    'TRACKING_URL' : receipt.get_tracking_url()
                 }
 
                 unescaped_context = Context(variable_dict, autoescape=False)
@@ -593,6 +598,8 @@ class Submission(models.Model):
                     )
 
                     message.send()
+                    receipt.sent_status = SENT
+                    receipt.save()
 
                 except Exception, e:
                     # TODO: Test coverage for this branch.
@@ -602,6 +609,8 @@ class Submission(models.Model):
                         {'subscription': subscription,
                          'error': e}
                     )
+                    receipt.sent_status = ERROR_SENDING
+                    receipt.save()
 
             self.sent = True
 
@@ -729,6 +738,10 @@ class Receipt(models.Model):
         self.view_count = self.view_count+1
         self.viewed = True
         self.save()
+
+    def get_tracking_url(self):
+        site = Site.objects.get_current()
+        return "http://"+site.domain+'/newsletter/requests/?r='+str(self.pk)
 
 
 

@@ -1,4 +1,10 @@
 import logging
+try:
+    from PIL import Image
+except ImportError:
+    import Image
+ 
+
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +16,8 @@ from smtplib import SMTPException
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.core.urlresolvers import reverse
 from django.conf import settings
+
+from django.http import HttpResponse
 
 from django.template.response import SimpleTemplateResponse
 
@@ -32,7 +40,7 @@ from django.utils import timezone
 
 from django.forms.models import modelformset_factory
 
-from .models import Newsletter, Subscription, Submission
+from .models import Newsletter, Subscription, Submission, Receipt
 from .forms import (
     SubscribeRequestForm, UserUpdateForm, UpdateRequestForm,
     UnsubscribeRequestForm, UpdateForm
@@ -620,3 +628,27 @@ class SubmissionArchiveDetailView(SubmissionViewBase, DateDetailView):
             context=context,
             **response_kwargs
         )
+
+
+def receipt(request):
+    receipt_pk = request.GET.get('r',None)
+
+
+    if receipt_pk:
+
+        try:
+            receipt = Receipt.objects.get(pk=receipt_pk)
+        except:
+            receipt = None
+
+        if receipt:
+            receipt.view()
+
+
+    img = Image.new("RGB", (10,10), "#FF00FF")
+    #img = Image.new("RGB", (1,1), "#FFFFFF")
+    response = HttpResponse(mimetype="image/png")
+    img.save(response, "PNG")
+    return response
+    # now what?
+    return HttpResponse(output)

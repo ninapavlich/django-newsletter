@@ -7,6 +7,7 @@
 	<title>{{ newsletter.title }}: {{ message.title }}</title>
 </head>
 <body>
+
     <h1>{{ newsletter.title }}</h1>
     <h2>{{ message.title }}</h2>
     {% for article in message.articles.all %}
@@ -29,5 +30,7 @@
         {% endif %}
         <li><a href="http://{{ site.domain }}{% url "newsletter_unsubscribe_request" newsletter.slug %}">Unsubscribe</a></li>
     </ul>
+
+    <img src="{{TRACKING_URL}}" alt="Email View Counter" />
 </body>
 </html>

@@ -12,12 +12,16 @@ from .views import (
 urlpatterns = patterns(
     '',
 
+    (r'^receipt$', 'newsletter.views.receipt' ),
+
     # Newsletter list and detail view
     surl('^$', NewsletterListView.as_view(), name='newsletter_list'),
     surl(
         '^<newsletter_slug:s>/$',
         NewsletterDetailView.as_view(), name='newsletter_detail'
     ),
+
+
 
     # Action request views
     surl(
