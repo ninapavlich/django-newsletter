@@ -658,10 +658,10 @@ class SubmissionArchiveDetailView(SubmissionViewBase, DateDetailView):
         )
 
 def output_receipt_image():
-    if settings.DEBUG:
-        img = Image.new("RGB", (10,10), "#FF00FF")
-    else:
-        img = Image.new("RGB", (1,1), "#FFFFFF")
+    #if settings.DEBUG:
+    #    img = Image.new("RGB", (10,10), "#FF00FF")
+    #else:
+    img = Image.new("RGB", (1,1), "#FFFFFF")
     
     response = HttpResponse(mimetype="image/png")
     img.save(response, "PNG")

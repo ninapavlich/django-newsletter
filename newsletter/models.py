@@ -765,7 +765,6 @@ class Receipt(models.Model):
     def get_full_archive_tracking_url(self):
         site = Site.objects.get_current()
         url = self.get_archive_tracker_url()
-        print "URL? "+str(url)
         return "http://"+site.domain+self.get_archive_tracker_url()
 
     def get_archive_url(self):
