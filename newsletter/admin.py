@@ -206,7 +206,7 @@ class ArticleInline(AdminImageMixin, StackedInline):
             'classes': ('collapse',)
         }),
     )
-
+    
     if newsletter_settings.RICHTEXT_WIDGET:
         formfield_overrides = {
             models.TextField: {'widget': newsletter_settings.RICHTEXT_WIDGET},
@@ -494,18 +494,18 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 
 class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     list_display = (
-        'submission', 'user', 'create_date', 'sent_status',
-        'viewed', 'view_count'
+        'submission', 'subscription', 'create_date', 'sent_status',
+        'email_viewed', 'email_view_count','archive_viewed', 'archive_view_count'
     )
-    list_display_links = ('submission', 'user')
+    list_display_links = ('submission', 'subscription')
     list_filter = (
-        'submission', 'user', 'sent_status', 'viewed'
+        'submission', 'subscription', 'sent_status', 'email_viewed', 'archive_viewed'
     )
     search_fields = (
-        'submission', 'user__email'
+        'submission',
     )
     readonly_fields = (
-        'create_date', 'viewed', 'view_count', 'sent_status'
+        'create_date', 'email_viewed', 'email_view_count','archive_viewed', 'archive_view_count', 'sent_status'
     )
     
 

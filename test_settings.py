@@ -96,6 +96,8 @@ DATABASES = {
 }
 
 INSTALLED_APPS = [
+    'grappelli.dashboard',
+    'grappelli',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -110,10 +112,9 @@ INSTALLED_APPS = [
     'django_extensions',
     'sorl.thumbnail',
     'imperavi',
-    'tinymce',
+    'suit_ckeditor',
     'newsletter',
-    'grappelli.dashboard',
-    'grappelli',
+    
 ]
 
 try:
@@ -138,3 +139,9 @@ STATIC_URL = '/static/'
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = ':LD*@))(D&DS:98ds90l;alKLJD&D;dkjjw8dLD*j3)_'
+
+
+
+NEWSLETTER_RICHTEXT_WIDGET = 'tinymce.widgets.TinyMCE'
+
+#imperavi.widget.ImperaviWidge

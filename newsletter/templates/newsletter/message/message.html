@@ -10,6 +10,11 @@
 
     <h1>{{ newsletter.title }}</h1>
     <h2>{{ message.title }}</h2>
+
+    {% if subscription.get_name %}
+    <strong>Dear {{subscription.get_name}},</strong>
+    {% endif %}
+
     {% for article in message.articles.all %}
         <h3>{{ article.title }}</h3>
         
@@ -26,11 +31,18 @@
     
     <ul>
         {% if submission.publish %}
+
+        {% if receipt %}
+        <li><a href="http://{{ site.domain }}{{ receipt.get_archive_url }}">Read message online</a></li>
+        {% else %}
         <li><a href="http://{{ site.domain }}{{ submission.get_absolute_url }}">Read message online</a></li>
+        {% endif %}
         {% endif %}
         <li><a href="http://{{ site.domain }}{% url "newsletter_unsubscribe_request" newsletter.slug %}">Unsubscribe</a></li>
     </ul>
 
+    {% if TRACKING_URL %}
     <img src="{{TRACKING_URL}}" alt="Email View Counter" />
+    {% endif %}
 </body>
 </html>

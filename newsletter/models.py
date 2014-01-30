@@ -18,6 +18,8 @@ from django.contrib.sites.managers import CurrentSiteManager
 
 from django.conf import settings
 
+from django.core.urlresolvers import reverse
+
 from sorl.thumbnail import ImageField
 
 from .utils import (
@@ -557,19 +559,20 @@ class Submission(models.Model):
 
             for subscription in subscriptions:
 
-                receipt = Receipt(submission=self, user=subscription.user)
+                receipt = Receipt(submission=self, subscription=subscription)
                 receipt.save()
 
                 variable_dict = {
                     'subscription': subscription,
                     'site': Site.objects.get_current(),
                     'submission': self,
+                    'receipt':receipt,
                     'message': self.message,
                     'newsletter': self.newsletter,
                     'date': self.publish_date,
                     'STATIC_URL': settings.STATIC_URL,
                     'MEDIA_URL': settings.MEDIA_URL,
-                    'TRACKING_URL' : receipt.get_tracking_url()
+                    'TRACKING_URL' : receipt.get_full_email_tracking_url()
                 }
 
                 unescaped_context = Context(variable_dict, autoescape=False)
@@ -676,6 +679,7 @@ class Submission(models.Model):
             }
         )
 
+
     newsletter = models.ForeignKey(
         'Newsletter', verbose_name=_('newsletter'), editable=False
     )
@@ -727,21 +731,57 @@ SENDING_STATUS_CHOICES = (
 class Receipt(models.Model):
 
     submission = models.ForeignKey('Submission')
-    user = models.ForeignKey(User, blank=True, null=True, verbose_name=_('user'), db_index=True)
+    subscription = models.ForeignKey('Subscription')
+ 
     create_date = models.DateTimeField(editable=False, default=now)
     sent_status = models.IntegerField(default=0, choices=SENDING_STATUS_CHOICES, db_index=True)
 
-    viewed = models.BooleanField(default=False, db_index=True)
-    view_count = models.IntegerField(default=0)
+    email_viewed = models.BooleanField(default=False, db_index=True)
+    email_view_count = models.IntegerField(default=0)
 
-    def view(self):
-        self.view_count = self.view_count+1
-        self.viewed = True
+    archive_viewed = models.BooleanField(default=False, db_index=True)
+    archive_view_count = models.IntegerField(default=0)
+
+    def view_email(self):
+        self.email_view_count = self.email_view_count+1
+        self.email_viewed = True
         self.save()
 
-    def get_tracking_url(self):
+    def view_archive(self):
+        self.archive_view_count = self.archive_view_count+1
+        self.archive_viewed = True
+        self.save()
+
+    def get_email_tracker_url(self):
+        return reverse('email_view_tracker', kwargs={'receipt_slug': self.pk})
+
+    def get_archive_tracker_url(self):
+        return reverse('archive_view_tracker', kwargs={'receipt_slug': self.pk})
+
+    def get_full_email_tracking_url(self):
         site = Site.objects.get_current()
-        return "http://"+site.domain+'/newsletter/requests/?r='+str(self.pk)
+        return "http://"+site.domain+self.get_email_tracker_url()
+
+    def get_full_archive_tracking_url(self):
+        site = Site.objects.get_current()
+        url = self.get_archive_tracker_url()
+        print "URL? "+str(url)
+        return "http://"+site.domain+self.get_archive_tracker_url()
+
+    def get_archive_url(self):
+
+        return reverse(
+            'newsletter_archive_detail_receipt', 
+            kwargs={
+                'newsletter_slug': self.submission.newsletter.slug,
+                'year': self.submission.publish_date.year,
+                'month': self.submission.publish_date.month,
+                'day': self.submission.publish_date.day,
+                'slug': self.submission.message.slug,
+                'receipt_slug':self.pk
+            }
+        )
+
 
 
 

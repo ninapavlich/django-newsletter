@@ -12,11 +12,13 @@ class Migration(SchemaMigration):
         db.create_table(u'newsletter_receipt', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('submission', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['newsletter.Submission'])),
-            ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'], null=True, blank=True)),
+            ('subscription', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['newsletter.Subscription'])),
             ('create_date', self.gf('django.db.models.fields.DateTimeField')(default=datetime.datetime.now)),
             ('sent_status', self.gf('django.db.models.fields.IntegerField')(default=0, db_index=True)),
-            ('viewed', self.gf('django.db.models.fields.BooleanField')(default=False, db_index=True)),
-            ('view_count', self.gf('django.db.models.fields.IntegerField')(default=0)),
+            ('email_viewed', self.gf('django.db.models.fields.BooleanField')(default=False, db_index=True)),
+            ('email_view_count', self.gf('django.db.models.fields.IntegerField')(default=0)),
+            ('archive_viewed', self.gf('django.db.models.fields.BooleanField')(default=False, db_index=True)),
+            ('archive_view_count', self.gf('django.db.models.fields.IntegerField')(default=0)),
         ))
         db.send_create_signal(u'newsletter', ['Receipt'])
 
@@ -78,7 +80,7 @@ class Migration(SchemaMigration):
             'date_create': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'date_modify': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'newsletter': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['newsletter.Newsletter']"}),
+            'newsletter': ('django.db.models.fields.related.ForeignKey', [], {'default': '1', 'to': u"orm['newsletter.Newsletter']"}),
             'slug': ('django.db.models.fields.SlugField', [], {'max_length': '50'}),
             'title': ('django.db.models.fields.CharField', [], {'max_length': '200'})
         },
@@ -95,29 +97,31 @@ class Migration(SchemaMigration):
         },
         u'newsletter.receipt': {
             'Meta': {'object_name': 'Receipt'},
+            'archive_view_count': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
+            'archive_viewed': ('django.db.models.fields.BooleanField', [], {'default': 'False', 'db_index': 'True'}),
             'create_date': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
+            'email_view_count': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
+            'email_viewed': ('django.db.models.fields.BooleanField', [], {'default': 'False', 'db_index': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'sent_status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'db_index': 'True'}),
             'submission': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['newsletter.Submission']"}),
-            'user': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'}),
-            'view_count': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'viewed': ('django.db.models.fields.BooleanField', [], {'default': 'False', 'db_index': 'True'})
+            'subscription': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['newsletter.Subscription']"})
         },
         u'newsletter.submission': {
             'Meta': {'object_name': 'Submission'},
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'message': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['newsletter.Message']"}),
+            'message': ('django.db.models.fields.related.ForeignKey', [], {'default': '1', 'to': u"orm['newsletter.Message']"}),
             'newsletter': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['newsletter.Newsletter']"}),
             'prepared': ('django.db.models.fields.BooleanField', [], {'default': 'False', 'db_index': 'True'}),
             'publish': ('django.db.models.fields.BooleanField', [], {'default': 'True', 'db_index': 'True'}),
-            'publish_date': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2014, 1, 28, 0, 0)', 'null': 'True', 'db_index': 'True', 'blank': 'True'}),
+            'publish_date': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2014, 1, 30, 0, 0)', 'null': 'True', 'db_index': 'True', 'blank': 'True'}),
             'sending': ('django.db.models.fields.BooleanField', [], {'default': 'False', 'db_index': 'True'}),
             'sent': ('django.db.models.fields.BooleanField', [], {'default': 'False', 'db_index': 'True'}),
             'subscriptions': ('django.db.models.fields.related.ManyToManyField', [], {'db_index': 'True', 'to': u"orm['newsletter.Subscription']", 'symmetrical': 'False', 'blank': 'True'})
         },
         u'newsletter.subscription': {
             'Meta': {'unique_together': "(('user', 'email_field', 'newsletter'),)", 'object_name': 'Subscription'},
-            'activation_code': ('django.db.models.fields.CharField', [], {'default': "'8d374118eef74127875f0e65b15d21604459e926'", 'max_length': '40'}),
+            'activation_code': ('django.db.models.fields.CharField', [], {'default': "'1564b973c0108a29496fe905a1ac34cee39ec0e7'", 'max_length': '40'}),
             'create_date': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
             'email_field': ('django.db.models.fields.EmailField', [], {'db_index': 'True', 'max_length': '75', 'null': 'True', 'db_column': "'email'", 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),

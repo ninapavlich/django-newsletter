@@ -12,7 +12,8 @@ from .views import (
 urlpatterns = patterns(
     '',
 
-    (r'^receipt$', 'newsletter.views.receipt' ),
+    surl(r'^receipt/email/<receipt_slug:s>/', 'newsletter.views.receipt_email',name='email_view_tracker' ),
+    surl(r'^receipt/archive/<receipt_slug:s>/', 'newsletter.views.receipt_archive',name='archive_view_tracker' ),
 
     # Newsletter list and detail view
     surl('^$', NewsletterListView.as_view(), name='newsletter_list'),
@@ -81,6 +82,10 @@ urlpatterns = patterns(
         name='newsletter_action_activated'),
 
     # Archive views
+    surl(
+        '^<newsletter_slug:s>/archive/<year:Y>/<month:m>/<day:d>/<slug:s>/<receipt_slug:s>/$',
+        SubmissionArchiveDetailView.as_view(), name='newsletter_archive_detail_receipt'
+    ),
     surl(
         '^<newsletter_slug:s>/archive/<year:Y>/<month:m>/<day:d>/<slug:s>/$',
         SubmissionArchiveDetailView.as_view(), name='newsletter_archive_detail'

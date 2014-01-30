@@ -163,6 +163,7 @@ class NewsletterMixin(ProcessUrlDataMixin):
     and adding it to context and form kwargs.
     """
 
+
     def process_url_data(self, *args, **kwargs):
         """
         Get newsletter based on `newsletter_slug` from url
@@ -179,23 +180,34 @@ class NewsletterMixin(ProcessUrlDataMixin):
         )
         newsletter_slug = kwargs['newsletter_slug']
 
+
         self.newsletter = get_object_or_404(
             newsletter_queryset, slug=newsletter_slug,
         )
+        try:
+            self.receipt = Receipt.objects.get(pk=kwargs['receipt_slug'])        
+        except:
+            self.receipt = None
+            
 
     def get_form_kwargs(self):
         """ Add newsletter to form kwargs. """
         kwargs = super(NewsletterMixin, self).get_form_kwargs()
 
         kwargs['newsletter'] = self.newsletter
+        kwargs['receipt'] = self.receipt
+
+
 
         return kwargs
 
     def get_context_data(self, **kwargs):
+        
         """ Add newsletter to context. """
         context = super(NewsletterMixin, self).get_context_data(**kwargs)
 
         context['newsletter'] = self.newsletter
+        context['receipt'] = self.receipt
 
         return context
 
@@ -554,6 +566,8 @@ class SubmissionViewBase(NewsletterMixin):
         return super(
             SubmissionViewBase, self).process_url_data(*args, **kwargs)
 
+
+
     def get_queryset(self):
         """ Filter out submissions for current newsletter. """
         qs = super(SubmissionViewBase, self).get_queryset()
@@ -583,6 +597,7 @@ class SubmissionArchiveIndexView(SubmissionViewBase, ArchiveIndexView):
 
 
 class SubmissionArchiveDetailView(SubmissionViewBase, DateDetailView):
+
     def get_context_data(self, **kwargs):
         """
         Make sure the actual message is available.
@@ -590,14 +605,27 @@ class SubmissionArchiveDetailView(SubmissionViewBase, DateDetailView):
         context = \
             super(SubmissionArchiveDetailView, self).get_context_data(**kwargs)
 
+        
         message = self.object.message
 
+        newsletter = context['newsletter']
+        receipt = context['receipt']
+        TRACKING_URL =  context['receipt'].get_full_archive_tracking_url() if context['receipt'] else None
+        subscription = context['receipt'].subscription if context['receipt'] else None
+        submission = context['receipt'].submission if context['receipt'] else None
+        
+       
         context.update({
-            'message': message,
+            'subscription': subscription,
             'site': Site.objects.get_current(),
+            'submission': submission,
+            'receipt':receipt,
+            'message': message,
+            'newsletter': newsletter,            
             'date': self.object.publish_date,
             'STATIC_URL': settings.STATIC_URL,
-            'MEDIA_URL': settings.MEDIA_URL
+            'MEDIA_URL': settings.MEDIA_URL,
+            'TRACKING_URL' : TRACKING_URL
         })
 
         return context
@@ -629,26 +657,37 @@ class SubmissionArchiveDetailView(SubmissionViewBase, DateDetailView):
             **response_kwargs
         )
 
+def output_receipt_image():
+    if settings.DEBUG:
+        img = Image.new("RGB", (10,10), "#FF00FF")
+    else:
+        img = Image.new("RGB", (1,1), "#FFFFFF")
+    
+    response = HttpResponse(mimetype="image/png")
+    img.save(response, "PNG")
+    return response
 
-def receipt(request):
-    receipt_pk = request.GET.get('r',None)
-
-
+def receipt_email(request, receipt_slug):
+    receipt_pk = receipt_slug
     if receipt_pk:
-
         try:
             receipt = Receipt.objects.get(pk=receipt_pk)
         except:
             receipt = None
-
         if receipt:
-            receipt.view()
+            receipt.view_email()
 
+    return output_receipt_image()
 
-    img = Image.new("RGB", (10,10), "#FF00FF")
-    #img = Image.new("RGB", (1,1), "#FFFFFF")
-    response = HttpResponse(mimetype="image/png")
-    img.save(response, "PNG")
-    return response
-    # now what?
-    return HttpResponse(output)
+def receipt_archive(request, receipt_slug):
+    receipt_pk = receipt_slug
+    if receipt_pk:
+        try:
+            receipt = Receipt.objects.get(pk=receipt_pk)
+        except:
+            receipt = None
+        if receipt:
+            receipt.view_archive()
+
+    return output_receipt_image()
+    
