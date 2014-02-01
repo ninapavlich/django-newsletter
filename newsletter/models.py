@@ -545,6 +545,8 @@ class Submission(models.Model):
 
 
     def submit(self):
+
+        print "SUBMIT"
         subscriptions = self.subscriptions.filter(subscribed=True)
 
         logger.info(
@@ -579,8 +581,10 @@ class Submission(models.Model):
             self.save()
 
     def submit_subscription(self, subscription, subject_template, text_template, html_template):
-        receipt = Receipt(submission=self, subscription=subscription)
-        receipt.save()
+        receipt, created = Receipt.objects.get_or_create(submission=self, subscription=subscription)
+
+        if receipt.sent_status == SENT:
+            return
 
         variable_dict = {
             'subscription': subscription,
@@ -660,8 +664,6 @@ class Submission(models.Model):
         if self.prepared == False:
             return
         if self.sent == True:
-            return
-        if self.sending == True:
             return
         if self.publish_date > now():
             return
