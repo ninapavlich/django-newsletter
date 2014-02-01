@@ -584,7 +584,7 @@ class Submission(models.Model):
         receipt, created = Receipt.objects.get_or_create(submission=self, subscription=subscription)
 
         if receipt.sent_status == SENT:
-            return False
+            return
 
         variable_dict = {
             'subscription': subscription,
