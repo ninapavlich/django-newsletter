@@ -77,31 +77,6 @@ class NewsletterSettings(Settings):
     def DEFAULT_CONFIRM_EMAIL_UPDATE(self):
         return self.CONFIRM_EMAIL
 
-
-    @property
-    def GROUP_MODEL(self):
-        GROUP_MODEL = getattr(
-            django_settings, "GROUP_MODEL", ""
-        )
-
-        if GROUP_MODEL:
-            try:
-                module, attr = GROUP_MODEL.rsplit(".", 1)
-                mod = import_module(module)
-                return getattr(mod, attr)
-            except Exception as e:
-                # Catch ImportError and other exceptions too
-                # (e.g. user sets setting to an integer)
-                raise ImproperlyConfigured(
-                    "Error while importing setting "
-                    "GROUP_MODEL %r: %s" % (
-                        GROUP_MODEL, e
-                    )
-                )
-
-        return None
-
-
     @property
     def RICHTEXT_WIDGET(self):
         # Import and set the richtext field
