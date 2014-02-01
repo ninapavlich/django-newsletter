@@ -2,37 +2,24 @@ import logging
 logger = logging.getLogger(__name__)
 
 from django.db import models
-
 from django.conf import settings
 from django.conf.urls import patterns, url
-
 from django.contrib import admin, messages
 from django.contrib.sites.models import Site
-
 from django.core import serializers
-
 from django.http import HttpResponse, HttpResponseRedirect, Http404
-
 from django.template import RequestContext, Context
-
-from django.shortcuts import render_to_response
-
-from django.utils.translation import ugettext, ungettext, ugettext_lazy as _
 from django.utils.formats import date_format
-
+from django.utils.translation import ugettext, ungettext, ugettext_lazy as _
+from django.utils.timezone import now
 from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.shortcuts import render_to_response
 
 from sorl.thumbnail.admin import AdminImageMixin
 
-from .models import (
-    Newsletter, Subscription, Article, Message, Submission, Receipt
-)
-
-from django.utils.timezone import now
-
 from .admin_forms import *
 from .admin_utils import *
-
+from .models import *
 from .settings import newsletter_settings
 
 # Contsruct URL's for icons
@@ -82,7 +69,7 @@ class SubmissionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     date_hierarchy = 'publish_date'
     list_filter = ('newsletter', 'publish', 'sent')
     save_as = True
-    filter_horizontal = ('subscriptions',)
+    filter_horizontal = ('subscriptions','subscription_groups')
     actions = ['send_submission']
 
     """ Actions """
@@ -507,8 +494,24 @@ class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     readonly_fields = (
         'create_date', 'email_viewed', 'email_view_count','archive_viewed', 'archive_view_count', 'sent_status'
     )
+
+class SubscriptionGroupAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
+    prepopulated_fields = {'slug': ('title',)}
+    list_display = (
+        'title', 'slug'
+    )
+    list_display_links = ('title', 'slug')
+    list_filter = (
+        'title',
+    )
+    search_fields = (
+        'title',
+    )
+    filter_horizontal = ('subscriptions',)
+    
     
 
+admin.site.register(SubscriptionGroup, SubscriptionGroupAdmin)
 admin.site.register(Receipt, ReceiptAdmin)
 admin.site.register(Newsletter, NewsletterAdmin)
 admin.site.register(Submission, SubmissionAdmin)

@@ -564,67 +564,76 @@ class Submission(models.Model):
 
             for subscription in subscriptions:
 
-                receipt = Receipt(submission=self, subscription=subscription)
-                receipt.save()
+                self.submit_subscription(subscription, subject_template, text_template, html_template)
 
-                variable_dict = {
-                    'subscription': subscription,
-                    'site': Site.objects.get_current(),
-                    'submission': self,
-                    'receipt':receipt,
-                    'message': self.message,
-                    'newsletter': self.newsletter,
-                    'date': self.publish_date,
-                    'STATIC_URL': settings.STATIC_URL,
-                    'MEDIA_URL': settings.MEDIA_URL,
-                    'TRACKING_URL' : receipt.get_full_email_tracking_url()
-                }
-
-                unescaped_context = Context(variable_dict, autoescape=False)
-
-                subject = subject_template.render(unescaped_context).strip()
-                text = text_template.render(unescaped_context)
-
-                message = EmailMultiAlternatives(
-                    subject, text,
-                    from_email=self.newsletter.get_sender(),
-                    to=[subscription.get_recipient()]
-                )
-
-                if html_template:
-                    escaped_context = Context(variable_dict)
-
-                    message.attach_alternative(
-                        html_template.render(escaped_context),
-                        "text/html"
-                    )
-
-                try:
-                    logger.debug(
-                        ugettext(u'Submitting message to: %s.'),
-                        subscription
-                    )
-
-                    message.send()
-                    receipt.sent_status = SENT
-                    receipt.save()
-
-                except Exception, e:
-                    # TODO: Test coverage for this branch.
-                    logger.error(
-                        ugettext(u'Message %(subscription)s failed '
-                                 u'with error: %(error)s'),
-                        {'subscription': subscription,
-                         'error': e}
-                    )
-                    receipt.sent_status = ERROR_SENDING
-                    receipt.save()
+            for group in self.subscription_groups.all():
+                
+                for subscription in group.subscriptions.all():
+                    if subscription.subscribed==True:
+                        self.submit_subscription(subscription, subject_template, text_template, html_template)
 
             self.sent = True
 
         finally:
             self.sending = False
             self.save()
+
+    def submit_subscription(self, subscription, subject_template, text_template, html_template):
+        receipt = Receipt(submission=self, subscription=subscription)
+        receipt.save()
+
+        variable_dict = {
+            'subscription': subscription,
+            'site': Site.objects.get_current(),
+            'submission': self,
+            'receipt':receipt,
+            'message': self.message,
+            'newsletter': self.newsletter,
+            'date': self.publish_date,
+            'STATIC_URL': settings.STATIC_URL,
+            'MEDIA_URL': settings.MEDIA_URL,
+            'TRACKING_URL' : receipt.get_full_email_tracking_url()
+        }
+
+        unescaped_context = Context(variable_dict, autoescape=False)
+
+        subject = subject_template.render(unescaped_context).strip()
+        text = text_template.render(unescaped_context)
+
+        message = EmailMultiAlternatives(
+            subject, text,
+            from_email=self.newsletter.get_sender(),
+            to=[subscription.get_recipient()]
+        )
+
+        if html_template:
+            escaped_context = Context(variable_dict)
+
+            message.attach_alternative(
+                html_template.render(escaped_context),
+                "text/html"
+            )
+
+        try:
+            logger.debug(
+                ugettext(u'Submitting message to: %s.'),
+                subscription
+            )
+
+            message.send()
+            receipt.sent_status = SENT
+            receipt.save()
+
+        except Exception, e:
+            # TODO: Test coverage for this branch.
+            logger.error(
+                ugettext(u'Message %(subscription)s failed '
+                         u'with error: %(error)s'),
+                {'subscription': subscription,
+                 'error': e}
+            )
+            receipt.sent_status = ERROR_SENDING
+            receipt.save()
 
     @classmethod
     def submit_queue(cls):
@@ -701,6 +710,9 @@ class Submission(models.Model):
         limit_choices_to={'subscribed': True}
     )
 
+    #TODO -- need ot limit choices to subscriptions that match this newsletter
+    subscription_groups = models.ManyToManyField('SubscriptionGroup', blank=True, null=True)
+
     publish_date = models.DateTimeField(
         verbose_name=_('publication date'), blank=True, null=True,
         default=now(), db_index=True
@@ -732,6 +744,16 @@ SENDING_STATUS_CHOICES = (
     (SENT, 'Sent'),
     (ERROR_SENDING, 'Error Sending'),
 )
+
+class SubscriptionGroup(models.Model):
+
+
+    title = models.CharField(max_length=200, verbose_name=_('title'))
+    slug = models.SlugField(verbose_name=_('slug'))
+    subscriptions = models.ManyToManyField(Subscription, blank=True, null=True)
+
+    def __unicode__(self):
+        return self.title
 
 class Receipt(models.Model):
 
