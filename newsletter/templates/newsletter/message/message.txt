@@ -12,4 +12,4 @@
 
 ++++++++++++++++++++
 
-Unsubscribe: http://{{ site }}{% url "newsletter_unsubscribe_request" newsletter.slug %}
+Unsubscribe: http://{{ site }}{{ receipt.get_unsubscribe_url }}

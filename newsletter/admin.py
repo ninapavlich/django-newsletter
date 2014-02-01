@@ -149,16 +149,16 @@ class SubmissionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     def submit(self, request, object_id):
         submission = self._getobj(request, object_id)
 
-        if submission.sent or submission.prepared:
+        prepared = submission.prepare_to_submit()
+
+        if prepared == True:
+            messages.info(request, ugettext("Your submission is being sent.")) 
+            return HttpResponseRedirect('../../')
+            
+        else:
             messages.info(request, ugettext("Submission already sent."))
             return HttpResponseRedirect('../')
 
-        submission.prepared = True
-        submission.save()
-
-        messages.info(request, ugettext("Your submission is being sent."))
-
-        return HttpResponseRedirect('../../')
 
     """ URLs """
     def get_urls(self):

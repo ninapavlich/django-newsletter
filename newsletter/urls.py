@@ -41,7 +41,7 @@ urlpatterns = patterns(
         name='newsletter_update_request'
     ),
     surl(
-        '^<newsletter_slug:s>/unsubscribe/$',
+        '^<newsletter_slug:s>/unsubscribe/<receipt_slug:s>/$',
         UnsubscribeRequestView.as_view(),
         name='newsletter_unsubscribe_request'
     ),

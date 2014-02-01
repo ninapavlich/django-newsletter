@@ -18,9 +18,9 @@
         <td><a href="{% url "newsletter_update_request" object.slug %}">Update</a></td>
     </tr>
     {% endif %}
-    <tr>
+    {% comment %}<tr>
         <td><a href="{% url "newsletter_unsubscribe_request" object.slug %}">Unsubscribe</a></td>
-    </tr>
+    </tr>{% endcomment %}
     <tr>
         <td><a href="{% url "newsletter_archive" object.slug %}">Archive</a></td>
     </tr>

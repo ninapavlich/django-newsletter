@@ -118,13 +118,6 @@ class Newsletter(models.Model):
         )
 
     @permalink
-    def unsubscribe_url(self):
-        return (
-            'newsletter_unsubscribe_request', (),
-            {'newsletter_slug': self.slug}
-        )
-
-    @permalink
     def update_url(self):
         return (
             'newsletter_update_request', (),
@@ -539,6 +532,18 @@ class Submission(models.Model):
             'publish_date': self.publish_date
         }
 
+    def prepare_to_submit(self):
+
+        if self.sent or self.prepared:
+            return False
+
+        self.prepared = True
+        self.save()
+
+        return True
+
+
+
     def submit(self):
         subscriptions = self.subscriptions.filter(subscribed=True)
 
@@ -766,6 +771,16 @@ class Receipt(models.Model):
         site = Site.objects.get_current()
         url = self.get_archive_tracker_url()
         return "http://"+site.domain+self.get_archive_tracker_url()
+
+    
+    def get_unsubscribe_url(self):
+        return reverse(
+            'newsletter_unsubscribe_request',
+            kwargs ={
+                'newsletter_slug': self.subscription.newsletter.slug,
+                'receipt_slug': self.pk
+            }
+        )
 
     def get_archive_url(self):
 

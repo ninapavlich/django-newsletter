@@ -34,11 +34,12 @@
 
         {% if receipt %}
         <li><a href="http://{{ site.domain }}{{ receipt.get_archive_url }}">Read message online</a></li>
+        <li><a href="http://{{ site.domain }}{{ receipt.get_unsubscribe_url }}">Unsubscribe</a></li>
         {% else %}
         <li><a href="http://{{ site.domain }}{{ submission.get_absolute_url }}">Read message online</a></li>
         {% endif %}
         {% endif %}
-        <li><a href="http://{{ site.domain }}{% url "newsletter_unsubscribe_request" newsletter.slug %}">Unsubscribe</a></li>
+       
     </ul>
 
     {% if TRACKING_URL %}
