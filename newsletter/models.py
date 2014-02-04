@@ -16,6 +16,7 @@ from django.template.loader import select_template
 from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ugettext
 from django.utils.timezone import now
+from datetime import datetime, timedelta
 
 from sorl.thumbnail import ImageField
 from bs4 import BeautifulSoup
@@ -153,19 +154,21 @@ class Newsletter(models.Model):
         return None
 
 
+IMMEDIATE = 0
+DAILY = 10
+WEEKLY  = 25
+MONTHLY = 50
+YEARLY = 100
+FREQUENCY_OPTIONS = (
+    (IMMEDIATE, "Immediate"),
+    (DAILY, "Daily"),
+    (WEEKLY, "Weekly"),
+    (MONTHLY, "Monthly"),
+    (YEARLY, "Yearly")
+)
+
 class Subscription(models.Model):
-    IMMEDIATE = 0
-    DAILY = 10
-    WEEKLY  = 25
-    MONTHLY = 50
-    YEARLY = 100
-    FREQUENCY_OPTIONS = (
-        (IMMEDIATE, "Immediate"),
-        (DAILY, "Daily"),
-        (WEEKLY, "Weekly"),
-        (MONTHLY, "Monthly"),
-        (YEARLY, "Yearly")
-    )
+    
 
 
     user = models.ForeignKey(
@@ -333,6 +336,7 @@ class Subscription(models.Model):
     )
 
     frequency = models.IntegerField(choices=FREQUENCY_OPTIONS, default=IMMEDIATE)
+    last_sent_date = models.DateTimeField(null=True, blank=True)
 
     def __unicode__(self):
         if self.name:
@@ -601,8 +605,48 @@ class Submission(models.Model):
     def submit_subscription(self, subscription, subject_template, text_template, html_template):
         receipt, created = Receipt.objects.get_or_create(submission=self, subscription=subscription)
 
-        #if receipt.sent_status == SENT:
-        #    return
+        if receipt.sent_status == SENT:
+            return
+
+        #Send a social update if the timing is right.
+        timing_is_right = True
+        
+        #Options 0-2 are not implemented on the front end.
+        if subscription.last_sent_date:
+            if subscription.unsubscribed == True:
+                #User wants no emails
+                timing_is_right = False
+            elif subscription.frequency == IMMEDIATE:
+                #user wants emails instantly, let's do it.
+                timing_is_right = True
+            elif subscription.frequency == DAILY:
+                #user wants emails daily, only send email if it's been at least a day since last digest.
+                time_since_digest = (now()-subscription.last_sent_date)
+                timing_is_right =  time_since_digest >= timedelta(days=1)            
+            elif subscription.frequency == WEEKLY:
+                #user wants emails weekly, only send email if it's been at least a week since last digest.
+                time_since_digest = (now()-subscription.last_sent_date)
+                timing_is_right =  time_since_digest >= timedelta(weeks=1)            
+            elif subscription.frequency == MONTHLY:
+                #user wants emails weekly, only send email if it's been at least a week since last digest.
+                time_since_digest = (now()-subscription.last_sent_date)
+                timing_is_right =  time_since_digest >= timedelta(weeks=4)   
+            elif subscriptions.frequency == YEARLY:
+                #user wants emails weekly, only send email if it's been at least a week since last digest.
+                time_since_digest = (now()-subscription.last_sent_date)
+                timing_is_right =  time_since_digest >= timedelta(days=365)            
+        else:
+            timing_is_right = True
+            
+        if timing_is_right == False:
+            return
+       
+        
+        #Update last
+        subscription.last_sent_date = now()
+        subscription.save()
+
+
 
         variable_dict = {
             'subscription': subscription,

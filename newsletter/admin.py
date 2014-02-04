@@ -328,7 +328,7 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     form = SubscriptionAdminForm
     list_display = (
         'name', 'email', 'admin_newsletter', 'admin_subscribe_date',
-        'admin_unsubscribe_date', 'admin_status_text', 'admin_status', 'frequency'
+        'admin_unsubscribe_date', 'admin_status_text', 'admin_status', 'frequency', 'last_sent_date'
     )
     list_display_links = ('name', 'email')
     list_filter = (
