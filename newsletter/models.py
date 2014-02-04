@@ -1,6 +1,12 @@
 import logging
 logger = logging.getLogger(__name__)
 
+
+from django.conf import settings
+from django.contrib.sites.models import Site
+from django.contrib.sites.managers import CurrentSiteManager
+from django.core.mail import EmailMultiAlternatives
+from django.core.urlresolvers import reverse
 from django.db import models
 from django.db.models import permalink
 
@@ -11,21 +17,16 @@ from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ugettext
 from django.utils.timezone import now
 
-from django.core.mail import EmailMultiAlternatives
-
-from django.contrib.sites.models import Site
-from django.contrib.sites.managers import CurrentSiteManager
-
-from django.conf import settings
-
-from django.core.urlresolvers import reverse
-
 from sorl.thumbnail import ImageField
+from bs4 import BeautifulSoup
+
 
 from .utils import (
     make_activation_code, get_default_sites, ACTIONS, get_user_model
 )
 User = get_user_model()
+
+
 
 
 class Newsletter(models.Model):
@@ -46,6 +47,8 @@ class Newsletter(models.Model):
     visible = models.BooleanField(
         default=True, verbose_name=_('visible'), db_index=True
     )
+
+    track_links = models.BooleanField( default=True )
 
     send_html = models.BooleanField(
         default=True, verbose_name=_('send html'),
@@ -151,6 +154,20 @@ class Newsletter(models.Model):
 
 
 class Subscription(models.Model):
+    IMMEDIATE = 0
+    DAILY = 10
+    WEEKLY  = 25
+    MONTHLY = 50
+    YEARLY = 100
+    FREQUENCY_OPTIONS = (
+        (IMMEDIATE, "Immediate"),
+        (DAILY, "Daily"),
+        (WEEKLY, "Weekly"),
+        (MONTHLY, "Monthly"),
+        (YEARLY, "Yearly")
+    )
+
+
     user = models.ForeignKey(
         User, blank=True, null=True, verbose_name=_('user')
     )
@@ -314,6 +331,8 @@ class Subscription(models.Model):
     unsubscribe_date = models.DateTimeField(
         verbose_name=_("unsubscribe date"), null=True, blank=True
     )
+
+    frequency = models.IntegerField(choices=FREQUENCY_OPTIONS, default=IMMEDIATE)
 
     def __unicode__(self):
         if self.name:
@@ -532,7 +551,7 @@ class Submission(models.Model):
             'publish_date': self.publish_date
         }
 
-    def prepare_to_submit(self):
+    def prepare_to_send(self):
 
         if self.sent or self.prepared:
             return False
@@ -543,8 +562,7 @@ class Submission(models.Model):
         return True
 
 
-
-    def submit(self):
+    def send(self):
 
         
         subscriptions = self.subscriptions.filter(subscribed=True)
@@ -583,8 +601,8 @@ class Submission(models.Model):
     def submit_subscription(self, subscription, subject_template, text_template, html_template):
         receipt, created = Receipt.objects.get_or_create(submission=self, subscription=subscription)
 
-        if receipt.sent_status == SENT:
-            return
+        #if receipt.sent_status == SENT:
+        #    return
 
         variable_dict = {
             'subscription': subscription,
@@ -612,9 +630,19 @@ class Submission(models.Model):
 
         if html_template:
             escaped_context = Context(variable_dict)
+            rendered_html = html_template.render(escaped_context)
+
+            if track_links:
+                soup = BeautifulSoup(message.body)
+                all_links = soup.find_all("a")            
+                for link in all_links:
+                    if link.has_attr('href'):
+                        link_tracker, created = LinkTrack.objects.get_or_create(submission=self, subscription=subscription, url=link['href'])
+                        link['href'] = link_tracker.get_tracker_url()
+                rendered_html = soup.prettify()
 
             message.attach_alternative(
-                html_template.render(escaped_context),
+                rendered_html,
                 "text/html"
             )
 
@@ -624,7 +652,7 @@ class Submission(models.Model):
                 subscription
             )
 
-            message.send()
+            #message.send()
             receipt.sent_status = SENT
             receipt.save()
 
@@ -639,6 +667,8 @@ class Submission(models.Model):
             receipt.sent_status = ERROR_SENDING
             receipt.save()
 
+
+
     @classmethod
     def submit_queue(cls):
         todo = cls.objects.filter(
@@ -647,7 +677,7 @@ class Submission(models.Model):
         )
 
         for submission in todo:
-            submission.submit()
+            submission.send()
 
     @classmethod
     def from_message(cls, message):
@@ -659,11 +689,7 @@ class Submission(models.Model):
         submission.subscriptions = message.newsletter.get_subscriptions()
         return submission
 
-    def send_submission(self):
-
-        self.submit()
-
-
+    
 
     def save(self):
         """ Set the newsletter from associated message upon saving. """
@@ -750,6 +776,40 @@ class SubscriptionGroup(models.Model):
     def __unicode__(self):
         return self.title
 
+class LinkTrack(models.Model):
+
+    submission = models.ForeignKey('Submission')
+    subscription = models.ForeignKey('Subscription')
+    url = models.CharField(max_length=1000, db_index=True)
+ 
+    create_date = models.DateTimeField(editable=False, default=now)
+    
+    viewed = models.BooleanField(default=False, db_index=True)
+    view_count = models.IntegerField(default=0)
+    first_viewed_date = models.DateTimeField(null=True, blank=True)
+    last_viewed_date = models.DateTimeField(null=True, blank=True)
+
+    def visit_link(self):
+        self.view_count = self.view_count+1
+        self.viewed = True
+        if not self.first_viewed_date:
+            self.first_viewed_date = now()
+        self.last_viewed_date = now()
+        self.save()
+
+    def get_tracker_path(self):
+
+        return reverse(
+            'link_tracker', 
+            kwargs={
+                'link_tracker_id': self.pk
+            }
+        )
+
+    def get_tracker_url(self):
+        site = Site.objects.get_current()
+        return "http://"+site.domain+self.get_tracker_path()
+
 class Receipt(models.Model):
 
     submission = models.ForeignKey('Submission')
@@ -760,18 +820,29 @@ class Receipt(models.Model):
 
     email_viewed = models.BooleanField(default=False, db_index=True)
     email_view_count = models.IntegerField(default=0)
+    email_first_viewed_date = models.DateTimeField(null=True, blank=True)
+    email_last_viewed_date = models.DateTimeField(null=True, blank=True)
 
+ 
     archive_viewed = models.BooleanField(default=False, db_index=True)
     archive_view_count = models.IntegerField(default=0)
+    archive_first_viewed_date = models.DateTimeField(null=True, blank=True)
+    archive_last_viewed_date = models.DateTimeField(null=True, blank=True)
 
     def view_email(self):
         self.email_view_count = self.email_view_count+1
         self.email_viewed = True
+        if not self.email_first_viewed_date:
+            self.email_first_viewed_date = now()
+        self.email_last_viewed_date = now()
         self.save()
 
     def view_archive(self):
         self.archive_view_count = self.archive_view_count+1
         self.archive_viewed = True
+        if not self.archive_first_viewed_date:
+            self.archive_first_viewed_date = now()
+        self.archive_last_viewed_date = now()
         self.save()
 
     def get_email_tracker_url(self):

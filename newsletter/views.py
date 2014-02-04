@@ -40,11 +40,8 @@ from django.utils import timezone
 
 from django.forms.models import modelformset_factory
 
-from .models import Newsletter, Subscription, Submission, Receipt
-from .forms import (
-    SubscribeRequestForm, UserUpdateForm, UpdateRequestForm,
-    UnsubscribeRequestForm, UpdateForm
-)
+from .models import *
+from .forms import *
 from .settings import newsletter_settings
 from .utils import ACTIONS
 
@@ -691,3 +688,19 @@ def receipt_archive(request, receipt_slug):
 
     return output_receipt_image()
     
+def link_tracker(request, link_tracker_id):
+
+    if link_tracker_id:
+        try:
+            link_tracker = LinkTrack.objects.get(pk=link_tracker_id)
+        except:
+            link_tracker = None
+        if link_tracker:
+            link_tracker.visit_link()
+
+            return redirect(link_tracker.url)
+
+    raise Http404(ugettext(
+                'No link found'
+            ))
+

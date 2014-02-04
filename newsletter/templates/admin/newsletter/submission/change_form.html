@@ -14,7 +14,8 @@
 {% if change %}{% if not is_popup %}
   <ul class="object-tools"><li><a href="history/" class="historylink">{% trans "History" %}</a></li>
   {% if has_absolute_url %}<li><a href="../../../r/{{ content_type_id }}/{{ object_id }}/" class="viewsitelink">{% trans "View on site" %}</a></li>{% endif%}
-  <li><a id="submitlink" href="submit/">{% trans "Submit" %}</a></li>
+  <li><a id="preparelink" href="prepare/">{% trans "Prepare to Send" %}</a></li>
+  <li><a id="submitlink" href="submit/">{% trans "Send" %}</a></li>
   </ul>
 {% endif %}{% endif %}
 {% endblock %}
@@ -23,6 +24,6 @@
 {% block after_related_objects %}{{ block.super }}<script type="text/javascript">
 django.jQuery(window).load(function() {
     JsonSubscribers.init('id_message'{% if add %}, add=true{% endif %});
-    SubmitInterface.init('#submitlink');
+    //SubmitInterface.init('#submitlink');
 });
 </script>{% endblock %}

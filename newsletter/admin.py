@@ -70,13 +70,8 @@ class SubmissionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     list_filter = ('newsletter', 'publish', 'sent')
     save_as = True
     filter_horizontal = ('subscriptions','subscription_groups')
-    actions = ['send_submission']
-
-    """ Actions """
-    def send_submission(self, request, queryset):
-        for submission in queryset:
-            submission.send_submission()
-    send_submission.short_description = _("Send Submission")
+    
+    
 
     """ List extensions """
     def admin_message(self, obj):
@@ -133,18 +128,26 @@ class SubmissionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     admin_status_text.short_description = ugettext('Status')
 
     """ Views """
-    def submit(self, request, object_id):
+    def prepare_to_send(self, request, object_id):
         submission = self._getobj(request, object_id)
 
-        prepared = submission.prepare_to_submit()
+        prepared = submission.prepare_to_send()
 
         if prepared == True:
-            messages.info(request, ugettext("Your submission is being sent.")) 
+            messages.info(request, ugettext("Your submission is ready to send.")) 
             return HttpResponseRedirect('../../')
             
         else:
-            messages.info(request, ugettext("Submission already sent."))
+            messages.info(request, ugettext("Submission already prepared."))
             return HttpResponseRedirect('../')
+
+    def submit(self, request, object_id):
+        submission = self._getobj(request, object_id)
+
+        submission.send()
+
+        messages.info(request, ugettext("Submission sent."))
+        return HttpResponseRedirect('../')
 
 
     """ URLs """
@@ -153,6 +156,10 @@ class SubmissionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 
         my_urls = patterns(
             '', url(
+                r'^(.+)/prepare/$',
+                self._wrap(self.prepare_to_send),
+                name=self._view_name('prepare')
+            ), url(
                 r'^(.+)/submit/$',
                 self._wrap(self.submit),
                 name=self._view_name('submit')
@@ -321,11 +328,11 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     form = SubscriptionAdminForm
     list_display = (
         'name', 'email', 'admin_newsletter', 'admin_subscribe_date',
-        'admin_unsubscribe_date', 'admin_status_text', 'admin_status'
+        'admin_unsubscribe_date', 'admin_status_text', 'admin_status', 'frequency'
     )
     list_display_links = ('name', 'email')
     list_filter = (
-        'newsletter', 'subscribed', 'unsubscribed', 'subscribe_date'
+        'newsletter', 'subscribed', 'unsubscribed', 'subscribe_date', 'frequency'
     )
     search_fields = (
         'name_field', 'email_field', 'user__first_name', 'user__last_name',
@@ -482,7 +489,7 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     list_display = (
         'submission', 'subscription', 'create_date', 'sent_status',
-        'email_viewed', 'email_view_count','archive_viewed', 'archive_view_count'
+        'email_viewed', 'email_view_count','email_first_viewed_date', 'email_last_viewed_date'
     )
     list_display_links = ('submission', 'subscription')
     list_filter = (
@@ -493,6 +500,22 @@ class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     )
     readonly_fields = (
         'create_date', 'email_viewed', 'email_view_count','archive_viewed', 'archive_view_count', 'sent_status'
+    )
+
+class LinkTrackAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
+    list_display = (
+        'submission', 'subscription', 'url', 'create_date',
+        'viewed', 'view_count','first_viewed_date', 'last_viewed_date'
+    )
+    list_display_links = ('submission', 'subscription')
+    list_filter = (
+        'submission', 'subscription', 'viewed'
+    )
+    search_fields = (
+        'submission',
+    )
+    readonly_fields = (
+        'create_date', 'viewed', 'view_count'
     )
 
 class SubscriptionGroupAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
@@ -513,6 +536,7 @@ class SubscriptionGroupAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 
 admin.site.register(SubscriptionGroup, SubscriptionGroupAdmin)
 admin.site.register(Receipt, ReceiptAdmin)
+admin.site.register(LinkTrack, LinkTrackAdmin)
 admin.site.register(Newsletter, NewsletterAdmin)
 admin.site.register(Submission, SubmissionAdmin)
 admin.site.register(Message, MessageAdmin)
