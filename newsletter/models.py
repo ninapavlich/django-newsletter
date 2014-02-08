@@ -676,7 +676,7 @@ class Submission(models.Model):
             escaped_context = Context(variable_dict)
             rendered_html = html_template.render(escaped_context)
 
-            if track_links:
+            if self.newsletter.track_links:
                 soup = BeautifulSoup(message.body)
                 all_links = soup.find_all("a")            
                 for link in all_links:
