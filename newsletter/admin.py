@@ -75,7 +75,7 @@ class ArticleInline(AdminImageMixin, admin.StackedInline):
 class MessageAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     save_as = True
     list_display = (
-        'admin_title', 'admin_newsletter', 'admin_preview', 'date_create',
+        '_admin_name','admin_preview', 'date_create',
         'date_modify'
     )
     list_filter = ('newsletter', )
@@ -251,22 +251,21 @@ class MessageAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     form = SubscriptionAdminForm
     list_display = (
-        'name', 'email', 'admin_newsletter', 'admin_subscribe_date',
+        '_admin_name', 'admin_subscribe_date',
         'admin_unsubscribe_date', 'admin_status_text', 'admin_status', 'frequency', 'last_sent_date'
     )
-    list_display_links = ('name', 'email')
+    list_display_links = ('_admin_name',)
     list_filter = (
         'newsletter', 'subscribed', 'unsubscribed', 'subscribe_date', 'frequency'
     )
     search_fields = (
-        'name_field', 'email_field', 'user__first_name', 'user__last_name',
-        'user__email'
+        '_admin_name',
     )
     readonly_fields = (
         'ip', 'subscribe_date', 'unsubscribe_date', 'activation_code'
     )
     date_hierarchy = 'subscribe_date'
-    actions = ['make_subscribed', 'make_unsubscribed']
+    actions = ['make_subscribed', 'make_unsubscribed', 're_save']
 
     """ List extensions """
     def admin_newsletter(self, obj):
@@ -338,6 +337,10 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
             ) % rows_updated
         )
     make_unsubscribed.short_description = _("Unsubscribe selected users")
+
+    def re_save(self, request, queryset):
+        for item in queryset:
+            item.save()
 
     """ Views """
     def subscribers_import(self, request):
@@ -412,19 +415,26 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 
 class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     list_display = (
-        'message', 'subscription', 'create_date', 'sent_status',
+        '_admin_name', 'create_date', 'sent_status',
         'email_viewed', 'email_view_count','email_first_viewed_date', 'email_last_viewed_date'
     )
-    list_display_links = ('message', 'subscription')
+    list_display_links = ('_admin_name', )
     list_filter = (
         'message', 'subscription', 'sent_status', 'email_viewed', 'archive_viewed'
     )
     search_fields = (
-        'message',
+        '_admin_name',
     )
     readonly_fields = (
         'create_date', 'email_viewed', 'email_view_count','archive_viewed', 'archive_view_count', 'sent_status'
     )
+
+    actions = ['re_save', ]
+
+    def re_save(self, request, queryset):
+        for item in queryset:
+            item.save()
+
 
 class LinkTrackAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     list_display = (

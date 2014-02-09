@@ -181,6 +181,7 @@ class Newsletter(models.Model):
 class Subscription(models.Model):
     
 
+    _admin_name = models.CharField(max_length=255, blank=True, null=True)
 
     user = models.ForeignKey(
         User, blank=True, null=True, verbose_name=_('user')
@@ -191,7 +192,10 @@ class Subscription(models.Model):
         verbose_name=_('name'), help_text=_('optional')
     )
 
-    
+    email_field = models.EmailField(
+        db_column='email', verbose_name=_('e-mail'), db_index=True,
+        blank=True, null=True
+    )
 
     ip = models.IPAddressField(_("IP address"), blank=True, null=True)
 
@@ -223,23 +227,11 @@ class Subscription(models.Model):
     last_sent_date = models.DateTimeField(null=True, blank=True)
 
     def __unicode__(self):
-        if self.name:
-            return _(u"%(name)s <%(email)s> to %(newsletter)s") % {
-                'name': self.name,
-                'email': self.email,
-                'newsletter': self.newsletter
-            }
-
-        else:
-            return _(u"%(email)s to %(newsletter)s") % {
-                'email': self.email,
-                'newsletter': self.newsletter
-            }
-
+        return self._admin_name
 
     class Meta:
 
-        ordering = ('user__last_name', 'user__first_name', 'name_field')
+        ordering = ('_admin_name',)
         verbose_name = _('subscription')
         verbose_name_plural = _('subscriptions')
         unique_together = ('user', 'email_field', 'newsletter')
@@ -254,10 +246,7 @@ class Subscription(models.Model):
             self.name_field = name
     name = property(get_name, set_name)
 
-    email_field = models.EmailField(
-        db_column='email', verbose_name=_('e-mail'), db_index=True,
-        blank=True, null=True
-    )
+    
 
     def get_email(self):
         if self.user:
@@ -370,6 +359,9 @@ class Subscription(models.Model):
                 self._subscribe()
             elif self.unsubscribed:
                 self._unsubscribe()
+
+        #Update admin name
+        self._admin_name = (self.get_name()+" "+self.get_email()+" to "+self.newsletter.title).encode('ascii', 'ignore')
 
         super(Subscription, self).save(*args, **kwargs)
 
@@ -511,6 +503,7 @@ class Article(models.Model):
 class Message(models.Model):
     """ Message """
 
+    _admin_name = models.CharField(max_length=255, blank=True, null=True)
     title = models.CharField(max_length=200, verbose_name=_('title'))
     slug = models.SlugField(verbose_name=_('slug'))
 
@@ -742,7 +735,13 @@ class Message(models.Model):
             )
             receipt.sent_status = ERROR_SENDING
             receipt.save()
-    
+
+    def save(self, *args, **kwargs):
+        #Update admin name
+        self._admin_name = (self.title+" of "+self.newsletter.title).encode('ascii', 'ignore')
+
+        super(Message, self).save(*args, **kwargs)
+
 
 
 class LinkTrack(models.Model):
@@ -781,6 +780,8 @@ class LinkTrack(models.Model):
 
 class Receipt(models.Model):
 
+    _admin_name = models.CharField(max_length=255, blank=True, null=True)
+
     message = models.ForeignKey('Message', null=True,blank=True)
     subscription = models.ForeignKey('Subscription')
  
@@ -796,6 +797,19 @@ class Receipt(models.Model):
     archive_view_count = models.IntegerField(default=0)
     archive_first_viewed_date = models.DateTimeField(null=True, blank=True)
     archive_last_viewed_date = models.DateTimeField(null=True, blank=True)
+
+    def __unicode__(self):
+        return self._admin_name
+
+    class Meta:
+
+        ordering = ('_admin_name',)
+
+    def save(self, *args, **kwargs):
+        #Update admin name
+        self._admin_name = ("Message "+self.message._admin_name+" for Subscription "+self.subscription._admin_name).encode('ascii', 'ignore')
+
+        super(Receipt, self).save(*args, **kwargs)
 
     def view_email(self):
         self.email_view_count = self.email_view_count+1
