@@ -455,7 +455,7 @@ class Subscription(models.Model):
 
 class Article(models.Model):
     """
-    An Article within a Message which will be send through a Submission.
+    An Article within a Message which will be send through a Message.
     """
 
     @classmethod
@@ -509,7 +509,7 @@ class Article(models.Model):
 
 
 class Message(models.Model):
-    """ Message as sent through a Submission. """
+    """ Message """
 
     title = models.CharField(max_length=200, verbose_name=_('title'))
     slug = models.SlugField(verbose_name=_('slug'))
@@ -526,7 +526,7 @@ class Message(models.Model):
         verbose_name=_('modified'), auto_now=True, editable=False
     )
 
-    send_date = models.DateTimeField(auto_now_add=True)
+    send_date = models.DateTimeField(auto_now_add=True, null=True)
 
     prepared = models.BooleanField(
         default=False, verbose_name=_('prepared'),
@@ -586,8 +586,8 @@ class Message(models.Model):
             send_date__lte=now()
         )
 
-        for submission in todo:
-            submission.send()
+        for message in todo:
+            message.send()
 
     def prepare_to_send(self):
 
@@ -608,12 +608,12 @@ class Message(models.Model):
         subscription_groups = SubscriptionGroup.objects.filter(newsletter = self.newsletter)
         
         logger.info(
-            ugettext(u"Submitting %(submission)s to %(count)d people"),
-            {'submission': self, 'count': subscriptions.count()}
+            ugettext(u"Submitting %(message)s to %(count)d people and %(gcount)d groups"),
+            {'message': self, 'count': subscriptions.count(), 'gcount' : subscription_groups.count()}
         )
 
         assert self.send_date < now(), \
-            'Something smells fishy; submission time in future.'
+            'Something smells fishy; message send time in future.'
 
         self.sending = True
         self.sending_date = timezone.now()
@@ -690,9 +690,8 @@ class Message(models.Model):
         variable_dict = {
             'subscription': subscription,
             'site': Site.objects.get_current(),
-            'submission': self,
             'receipt':receipt,
-            'message': self.message,
+            'message': message,
             'newsletter': self.newsletter,
             'date': self.publish_date,
             'STATIC_URL': settings.STATIC_URL,
@@ -720,7 +719,7 @@ class Message(models.Model):
                 all_links = soup.find_all("a")            
                 for link in all_links:
                     if link.has_attr('href'):
-                        link_tracker, created = LinkTrack.objects.get_or_create(submission=self, subscription=subscription, url=link['href'])
+                        link_tracker, created = LinkTrack.objects.get_or_create(message=self, subscription=subscription, url=link['href'])
                         link['href'] = link_tracker.get_tracker_url()
                 rendered_html = soup.prettify()
 
@@ -767,7 +766,7 @@ class SubscriptionGroup(models.Model):
 
 class LinkTrack(models.Model):
 
-    submission = models.ForeignKey('Submission')
+    message = models.ForeignKey('Message', null=True, blank=True)
     subscription = models.ForeignKey('Subscription')
     url = models.CharField(max_length=1000, db_index=True)
  
@@ -801,6 +800,7 @@ class LinkTrack(models.Model):
 
 class Receipt(models.Model):
 
+    message = models.ForeignKey('Message', null=True,blank=True)
     submission = models.ForeignKey('Submission')
     subscription = models.ForeignKey('Subscription')
  
@@ -811,7 +811,6 @@ class Receipt(models.Model):
     email_view_count = models.IntegerField(default=0)
     email_first_viewed_date = models.DateTimeField(null=True, blank=True)
     email_last_viewed_date = models.DateTimeField(null=True, blank=True)
-
  
     archive_viewed = models.BooleanField(default=False, db_index=True)
     archive_view_count = models.IntegerField(default=0)
@@ -864,15 +863,70 @@ class Receipt(models.Model):
         return reverse(
             'newsletter_archive_detail_receipt', 
             kwargs={
-                'newsletter_slug': self.submission.newsletter.slug,
-                'year': self.submission.publish_date.year,
-                'month': self.submission.publish_date.month,
-                'day': self.submission.publish_date.day,
-                'slug': self.submission.message.slug,
+                'newsletter_slug': self.message.newsletter.slug,
+                'year': self.message.send_date.year,
+                'month': self.message.send_date.month,
+                'day': self.message.send_date.day,
+                'slug': self.message.slug,
                 'receipt_slug':self.pk
             }
         )
 
+class Submission(models.Model):
+    """
+    Submission represents a particular Message as it is being submitted
+    to a list of Subscribers. This is where actual queueing and submission
+    happends.
+    """
+   
+    def __unicode__(self):
+        return _(u"%(newsletter)s on %(publish_date)s") % {
+            'newsletter': self.message,
+            'publish_date': self.publish_date
+        }
+
+   
+
+    newsletter = models.ForeignKey(
+        'Newsletter', verbose_name=_('newsletter'), editable=False
+    )
+    message = models.ForeignKey(
+        'Message', verbose_name=_('message'), editable=True,
+        default=Message.get_default_id, null=False
+    )
+
+    subscriptions = models.ManyToManyField(
+        'Subscription',
+        help_text=_('If you select none, the system will automatically find '
+                    'the subscribers for you.'),
+        blank=True, db_index=True, verbose_name=_('recipients'),
+        limit_choices_to={'subscribed': True}
+    )
+
+    #TODO -- need ot limit choices to subscriptions that match this newsletter
+    subscription_groups = models.ManyToManyField('SubscriptionGroup', blank=True, null=True)
+
+    publish_date = models.DateTimeField(
+        verbose_name=_('publication date'), blank=True, null=True,
+        default=now(), db_index=True
+    )
+    publish = models.BooleanField(
+        default=True, verbose_name=_('publish'),
+        help_text=_('Publish in archive.'), db_index=True
+    )
+
+    prepared = models.BooleanField(
+        default=False, verbose_name=_('prepared'),
+        db_index=True, editable=False
+    )
+    sent = models.BooleanField(
+        default=False, verbose_name=_('sent'),
+        db_index=True, editable=False
+    )
+    sending = models.BooleanField(
+        default=False, verbose_name=_('sending'),
+        db_index=True, editable=False
+    )
 
 
 

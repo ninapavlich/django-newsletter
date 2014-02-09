@@ -60,7 +60,7 @@ class NewsletterAdmin(admin.ModelAdmin):
     admin_submissions.short_description = ''
 
 
-class ArticleInline(AdminImageMixin, StackedInline):
+class ArticleInline(AdminImageMixin, admin.StackedInline):
     model = Article
     extra = 2
     fieldsets = (
@@ -237,7 +237,7 @@ class MessageAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
                 r'^(.+)/submit/$',
                 self._wrap(self.submit),
                 name=self._view_name('submit_message')
-            )
+            ),
             url(r'^(.+)/preview/$',
                 self._wrap(self.preview),
                 name=self._view_name('preview')),
@@ -419,7 +419,7 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 
 class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     list_display = (
-        'submission', 'subscription', 'create_date', 'sent_status',
+        'message', 'submission', 'subscription', 'create_date', 'sent_status',
         'email_viewed', 'email_view_count','email_first_viewed_date', 'email_last_viewed_date'
     )
     list_display_links = ('submission', 'subscription')
@@ -435,15 +435,15 @@ class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 
 class LinkTrackAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     list_display = (
-        'submission', 'subscription', 'url', 'create_date',
+        'message', 'subscription', 'url', 'create_date',
         'viewed', 'view_count','first_viewed_date', 'last_viewed_date'
     )
-    list_display_links = ('submission', 'subscription')
+    list_display_links = ('message', 'subscription')
     list_filter = (
-        'submission', 'subscription', 'viewed'
+        'message', 'subscription', 'viewed'
     )
     search_fields = (
-        'submission',
+        'message',
     )
     readonly_fields = (
         'create_date', 'viewed', 'view_count'
@@ -469,6 +469,5 @@ admin.site.register(SubscriptionGroup, SubscriptionGroupAdmin)
 admin.site.register(Receipt, ReceiptAdmin)
 admin.site.register(LinkTrack, LinkTrackAdmin)
 admin.site.register(Newsletter, NewsletterAdmin)
-admin.site.register(Submission, SubmissionAdmin)
 admin.site.register(Message, MessageAdmin)
 admin.site.register(Subscription, SubscriptionAdmin)
