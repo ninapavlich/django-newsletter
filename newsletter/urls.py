@@ -4,7 +4,7 @@ from surlex.dj import surl
 
 from .views import (
     NewsletterListView, NewsletterDetailView,
-    SubmissionArchiveIndexView, SubmissionArchiveDetailView,
+    MessageArchiveIndexView, MessageArchiveDetailView,
     SubscribeRequestView, UnsubscribeRequestView, UpdateRequestView,
     ActionTemplateView, UpdateSubscriptionViev,
 )
@@ -87,14 +87,14 @@ urlpatterns = patterns(
     # Archive views
     surl(
         '^<newsletter_slug:s>/archive/<year:Y>/<month:m>/<day:d>/<slug:s>/<receipt_slug:s>/$',
-        SubmissionArchiveDetailView.as_view(), name='newsletter_archive_detail_receipt'
+        MessageArchiveDetailView.as_view(), name='newsletter_archive_detail_receipt'
     ),
     surl(
         '^<newsletter_slug:s>/archive/<year:Y>/<month:m>/<day:d>/<slug:s>/$',
-        SubmissionArchiveDetailView.as_view(), name='newsletter_archive_detail'
+        MessageArchiveDetailView.as_view(), name='newsletter_archive_detail'
     ),
     surl(
         '^<newsletter_slug:s>/archive/$',
-        SubmissionArchiveIndexView.as_view(), name='newsletter_archive'
+        MessageArchiveIndexView.as_view(), name='newsletter_archive'
     ),
 )

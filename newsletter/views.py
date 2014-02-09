@@ -544,12 +544,12 @@ class UpdateSubscriptionViev(ActionFormView):
         return super(UpdateSubscriptionViev, self).form_valid(form)
 
 
-class SubmissionViewBase(NewsletterMixin):
-    """ Base class for submission archive views. """
-    date_field = 'publish_date'
+class MessageViewBase(NewsletterMixin):
+    """ Base class for message archive views. """
+    date_field = 'send_date'
     allow_empty = True
-    queryset = Submission.objects.filter(publish=True)
-    slug_field = 'message__slug'
+    queryset = Message.objects.all()
+    slug_field = 'slug'
 
     # Specify date element notation
     year_format = '%Y'
@@ -561,13 +561,13 @@ class SubmissionViewBase(NewsletterMixin):
 
         kwargs['newsletter_queryset'] = NewsletterListView().get_queryset()
         return super(
-            SubmissionViewBase, self).process_url_data(*args, **kwargs)
+            MessageViewBase, self).process_url_data(*args, **kwargs)
 
 
 
     def get_queryset(self):
         """ Filter out submissions for current newsletter. """
-        qs = super(SubmissionViewBase, self).get_queryset()
+        qs = super(MessageViewBase, self).get_queryset()
 
         qs = qs.filter(newsletter=self.newsletter)
 
@@ -589,33 +589,30 @@ class SubmissionViewBase(NewsletterMixin):
         return value
 
 
-class SubmissionArchiveIndexView(SubmissionViewBase, ArchiveIndexView):
+class MessageArchiveIndexView(MessageViewBase, ArchiveIndexView):
     pass
 
 
-class SubmissionArchiveDetailView(SubmissionViewBase, DateDetailView):
+class MessageArchiveDetailView(MessageViewBase, DateDetailView):
 
     def get_context_data(self, **kwargs):
         """
         Make sure the actual message is available.
         """
         context = \
-            super(SubmissionArchiveDetailView, self).get_context_data(**kwargs)
+            super(MessageArchiveDetailView, self).get_context_data(**kwargs)
 
         
-        message = self.object.message
-
+        message = self.object
         newsletter = context['newsletter']
         receipt = context['receipt']
         TRACKING_URL =  context['receipt'].get_full_archive_tracking_url() if context['receipt'] else None
         subscription = context['receipt'].subscription if context['receipt'] else None
-        submission = context['receipt'].submission if context['receipt'] else None
         
        
         context.update({
             'subscription': subscription,
             'site': Site.objects.get_current(),
-            'submission': submission,
             'receipt':receipt,
             'message': message,
             'newsletter': newsletter,            

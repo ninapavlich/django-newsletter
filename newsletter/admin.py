@@ -33,7 +33,7 @@ ICON_URLS = {
 
 class NewsletterAdmin(admin.ModelAdmin):
     list_display = (
-        'title', 'admin_subscriptions', 'admin_messages', 'admin_submissions'
+        'title', 'admin_subscriptions', 'admin_messages'
     )
     prepopulated_fields = {'slug': ('title',)}
 
@@ -51,13 +51,6 @@ class NewsletterAdmin(admin.ModelAdmin):
             (obj.id, ugettext('Subscriptions'))
     admin_subscriptions.allow_tags = True
     admin_subscriptions.short_description = ''
-
-    def admin_submissions(self, obj):
-        return '<a href="../submission/?newsletter__id__exact=%s">%s</a>' % (
-            obj.id, ugettext('Submissions')
-        )
-    admin_submissions.allow_tags = True
-    admin_submissions.short_description = ''
 
 
 class ArticleInline(AdminImageMixin, admin.StackedInline):
@@ -419,15 +412,15 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
 
 class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     list_display = (
-        'message', 'submission', 'subscription', 'create_date', 'sent_status',
+        'message', 'subscription', 'create_date', 'sent_status',
         'email_viewed', 'email_view_count','email_first_viewed_date', 'email_last_viewed_date'
     )
-    list_display_links = ('submission', 'subscription')
+    list_display_links = ('message', 'subscription')
     list_filter = (
-        'submission', 'subscription', 'sent_status', 'email_viewed', 'archive_viewed'
+        'message', 'subscription', 'sent_status', 'email_viewed', 'archive_viewed'
     )
     search_fields = (
-        'submission',
+        'message',
     )
     readonly_fields = (
         'create_date', 'email_viewed', 'email_view_count','archive_viewed', 'archive_view_count', 'sent_status'
@@ -449,23 +442,7 @@ class LinkTrackAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
         'create_date', 'viewed', 'view_count'
     )
 
-class SubscriptionGroupAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
-    prepopulated_fields = {'slug': ('title',)}
-    list_display = (
-        'title', 'slug'
-    )
-    list_display_links = ('title', 'slug')
-    list_filter = (
-        'title',
-    )
-    search_fields = (
-        'title',
-    )
-    filter_horizontal = ('subscriptions',)
     
-    
-
-admin.site.register(SubscriptionGroup, SubscriptionGroupAdmin)
 admin.site.register(Receipt, ReceiptAdmin)
 admin.site.register(LinkTrack, LinkTrackAdmin)
 admin.site.register(Newsletter, NewsletterAdmin)

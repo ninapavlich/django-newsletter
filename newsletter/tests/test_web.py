@@ -22,7 +22,7 @@ from django.utils import unittest, timezone
 from django.test.utils import override_settings
 
 from ..models import (
-    Newsletter, Subscription, Submission, Message, get_default_sites
+    Newsletter, Subscription, Message, get_default_sites
 )
 
 from ..forms import UpdateForm
@@ -1181,9 +1181,7 @@ class ArchiveTestcase(NewsletterListTestCase):
 
         message.save()
 
-        # Create a submission
-        self.submission = Submission.from_message(message)
-
+        
     def test_archive_invisible(self):
         """ Test whether an invisible newsletter is indeed not shown. """
 

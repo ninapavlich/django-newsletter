@@ -605,11 +605,10 @@ class Message(models.Model):
 
         
         subscriptions = Subscription.objects.filter(newsletter = self.newsletter)
-        subscription_groups = SubscriptionGroup.objects.filter(newsletter = self.newsletter)
-        
+                
         logger.info(
-            ugettext(u"Submitting %(message)s to %(count)d people and %(gcount)d groups"),
-            {'message': self, 'count': subscriptions.count(), 'gcount' : subscription_groups.count()}
+            ugettext(u"Submitting %(message)s to %(count)d people"),
+            {'message': self, 'count': subscriptions.count()}
         )
 
         assert self.send_date < now(), \
@@ -627,12 +626,7 @@ class Message(models.Model):
 
                 self.send_subscription(subscription, subject_template, text_template, html_template)
 
-            for group in subscription_groups.all():
-                
-                for subscription in group.subscriptions.all():
-                    if subscription.subscribed==True:
-                        self.send_subscription(subscription, subject_template, text_template, html_template)
-
+           
             self.sent = True
 
         finally:
@@ -751,19 +745,6 @@ class Message(models.Model):
     
 
 
-class SubscriptionGroup(models.Model):
-
-
-    title = models.CharField(max_length=200, verbose_name=_('title'))
-    slug = models.SlugField(verbose_name=_('slug'))
-    subscriptions = models.ManyToManyField(Subscription, blank=True, null=True)
-
-    def __unicode__(self):
-        return self.title
-
-    class Meta:
-        ordering = ('title',)
-
 class LinkTrack(models.Model):
 
     message = models.ForeignKey('Message', null=True, blank=True)
@@ -801,7 +782,6 @@ class LinkTrack(models.Model):
 class Receipt(models.Model):
 
     message = models.ForeignKey('Message', null=True,blank=True)
-    submission = models.ForeignKey('Submission')
     subscription = models.ForeignKey('Subscription')
  
     create_date = models.DateTimeField(editable=False, default=now)
@@ -871,64 +851,3 @@ class Receipt(models.Model):
                 'receipt_slug':self.pk
             }
         )
-
-class Submission(models.Model):
-    """
-    Submission represents a particular Message as it is being submitted
-    to a list of Subscribers. This is where actual queueing and submission
-    happends.
-    """
-   
-    def __unicode__(self):
-        return _(u"%(newsletter)s on %(publish_date)s") % {
-            'newsletter': self.message,
-            'publish_date': self.publish_date
-        }
-
-   
-
-    newsletter = models.ForeignKey(
-        'Newsletter', verbose_name=_('newsletter'), editable=False
-    )
-    message = models.ForeignKey(
-        'Message', verbose_name=_('message'), editable=True,
-        default=Message.get_default_id, null=False
-    )
-
-    subscriptions = models.ManyToManyField(
-        'Subscription',
-        help_text=_('If you select none, the system will automatically find '
-                    'the subscribers for you.'),
-        blank=True, db_index=True, verbose_name=_('recipients'),
-        limit_choices_to={'subscribed': True}
-    )
-
-    #TODO -- need ot limit choices to subscriptions that match this newsletter
-    subscription_groups = models.ManyToManyField('SubscriptionGroup', blank=True, null=True)
-
-    publish_date = models.DateTimeField(
-        verbose_name=_('publication date'), blank=True, null=True,
-        default=now(), db_index=True
-    )
-    publish = models.BooleanField(
-        default=True, verbose_name=_('publish'),
-        help_text=_('Publish in archive.'), db_index=True
-    )
-
-    prepared = models.BooleanField(
-        default=False, verbose_name=_('prepared'),
-        db_index=True, editable=False
-    )
-    sent = models.BooleanField(
-        default=False, verbose_name=_('sent'),
-        db_index=True, editable=False
-    )
-    sending = models.BooleanField(
-        default=False, verbose_name=_('sending'),
-        db_index=True, editable=False
-    )
-
-
-
-
-
