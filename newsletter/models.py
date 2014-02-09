@@ -17,6 +17,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ugettext
 from django.utils.timezone import now
 from datetime import datetime, timedelta
+from django.utils.timezone import now
 
 from sorl.thumbnail import ImageField
 from bs4 import BeautifulSoup
@@ -587,7 +588,7 @@ class Message(models.Model):
         if self.sent or self.prepared:
             return False
 
-        self.prepared_date = timezone.now()
+        self.prepared_date = now()
         self.prepared = True
         self.save()
 
@@ -604,16 +605,19 @@ class Message(models.Model):
             {'message': self, 'count': subscriptions.count()}
         )
 
-        assert self.send_date < now(), \
-            'Something smells fishy; message send time in future.'
+        
+        if self.send_date and send_date < now():
+            return
+
+
 
         self.sending = True
-        self.sending_date = timezone.now()
+        self.sending_date = now()
         self.save()
 
         try:
             (subject_template, text_template, html_template) = \
-                self.message.newsletter.get_templates('message')
+                self.newsletter.get_templates('message')
 
             for subscription in subscriptions:
 
@@ -624,10 +628,11 @@ class Message(models.Model):
 
         finally:
             self.sending = False
+            self.sent_date = now()
             self.save()
 
     def send_subscription(self, subscription, subject_template, text_template, html_template):
-
+        
 
         receipt, created = Receipt.objects.get_or_create(message=self, subscription=subscription)
 
@@ -666,21 +671,18 @@ class Message(models.Model):
             
         if timing_is_right == False:
             return
-       
         
         #Update last
         subscription.last_sent_date = now()
         subscription.save()
 
-
-
         variable_dict = {
             'subscription': subscription,
             'site': Site.objects.get_current(),
             'receipt':receipt,
-            'message': message,
+            'message': self,
             'newsletter': self.newsletter,
-            'date': self.publish_date,
+            'date': self.send_date,
             'STATIC_URL': settings.STATIC_URL,
             'MEDIA_URL': settings.MEDIA_URL,
             'TRACKING_URL' : receipt.get_full_email_tracking_url()
@@ -691,7 +693,7 @@ class Message(models.Model):
         subject = subject_template.render(unescaped_context).strip()
         text = text_template.render(unescaped_context)
 
-        message = EmailMultiAlternatives(
+        email_message = EmailMultiAlternatives(
             subject, text,
             from_email=self.newsletter.get_sender(),
             to=[subscription.get_recipient()]
@@ -701,16 +703,19 @@ class Message(models.Model):
             escaped_context = Context(variable_dict)
             rendered_html = html_template.render(escaped_context)
 
+            
             if self.newsletter.track_links:
-                soup = BeautifulSoup(message.body)
+                soup = BeautifulSoup(email_message.body)
                 all_links = soup.find_all("a")            
                 for link in all_links:
                     if link.has_attr('href'):
                         link_tracker, created = LinkTrack.objects.get_or_create(message=self, subscription=subscription, url=link['href'])
                         link['href'] = link_tracker.get_tracker_url()
-                rendered_html = soup.prettify()
 
-            message.attach_alternative(
+                rendered_html = soup.prettify()
+            
+
+            email_message.attach_alternative(
                 rendered_html,
                 "text/html"
             )
@@ -721,7 +726,7 @@ class Message(models.Model):
                 subscription
             )
 
-            #message.send()
+            email_message.send()
             receipt.sent_status = SENT
             receipt.save()
 

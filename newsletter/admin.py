@@ -220,6 +220,7 @@ class MessageAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     def get_urls(self):
         urls = super(MessageAdmin, self).get_urls()
 
+        
         my_urls = patterns(
             '',
             url(
