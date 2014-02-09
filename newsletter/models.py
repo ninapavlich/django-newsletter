@@ -27,6 +27,28 @@ from .utils import (
 )
 User = get_user_model()
 
+NOT_SENT = 0
+SENT = 1
+ERROR_SENDING = 2
+SENDING_STATUS_CHOICES = (
+    (NOT_SENT, 'Not Sent'),
+    (SENT, 'Sent'),
+    (ERROR_SENDING, 'Error Sending'),
+)
+
+IMMEDIATE = 0
+DAILY = 10
+WEEKLY  = 25
+MONTHLY = 50
+YEARLY = 100
+FREQUENCY_OPTIONS = (
+    (IMMEDIATE, "Immediate"),
+    (DAILY, "Daily"),
+    (WEEKLY, "Weekly"),
+    (MONTHLY, "Monthly"),
+    (YEARLY, "Yearly")
+)
+
 
 
 
@@ -154,18 +176,7 @@ class Newsletter(models.Model):
         return None
 
 
-IMMEDIATE = 0
-DAILY = 10
-WEEKLY  = 25
-MONTHLY = 50
-YEARLY = 100
-FREQUENCY_OPTIONS = (
-    (IMMEDIATE, "Immediate"),
-    (DAILY, "Daily"),
-    (WEEKLY, "Weekly"),
-    (MONTHLY, "Monthly"),
-    (YEARLY, "Yearly")
-)
+
 
 class Subscription(models.Model):
     
@@ -179,6 +190,59 @@ class Subscription(models.Model):
         db_column='name', max_length=30, blank=True, null=True,
         verbose_name=_('name'), help_text=_('optional')
     )
+
+    
+
+    ip = models.IPAddressField(_("IP address"), blank=True, null=True)
+
+    newsletter = models.ForeignKey('Newsletter', verbose_name=_('newsletter'))
+
+    create_date = models.DateTimeField(editable=False, default=now)
+
+    activation_code = models.CharField(
+        verbose_name=_('activation code'), max_length=40,
+        default=make_activation_code
+    )
+
+    subscribed = models.BooleanField(
+        default=False, verbose_name=_('subscribed'), db_index=True
+    )
+    subscribe_date = models.DateTimeField(
+        verbose_name=_("subscribe date"), null=True, blank=True
+    )
+
+    # This should be a pseudo-field, I reckon.
+    unsubscribed = models.BooleanField(
+        default=False, verbose_name=_('unsubscribed'), db_index=True
+    )
+    unsubscribe_date = models.DateTimeField(
+        verbose_name=_("unsubscribe date"), null=True, blank=True
+    )
+
+    frequency = models.IntegerField(choices=FREQUENCY_OPTIONS, default=IMMEDIATE)
+    last_sent_date = models.DateTimeField(null=True, blank=True)
+
+    def __unicode__(self):
+        if self.name:
+            return _(u"%(name)s <%(email)s> to %(newsletter)s") % {
+                'name': self.name,
+                'email': self.email,
+                'newsletter': self.newsletter
+            }
+
+        else:
+            return _(u"%(email)s to %(newsletter)s") % {
+                'email': self.email,
+                'newsletter': self.newsletter
+            }
+
+
+    class Meta:
+
+        ordering = ('user__last_name', 'user__first_name', 'name_field')
+        verbose_name = _('subscription')
+        verbose_name_plural = _('subscriptions')
+        unique_together = ('user', 'email_field', 'newsletter')
 
     def get_name(self):
         if self.user:
@@ -309,54 +373,6 @@ class Subscription(models.Model):
 
         super(Subscription, self).save(*args, **kwargs)
 
-    ip = models.IPAddressField(_("IP address"), blank=True, null=True)
-
-    newsletter = models.ForeignKey('Newsletter', verbose_name=_('newsletter'))
-
-    create_date = models.DateTimeField(editable=False, default=now)
-
-    activation_code = models.CharField(
-        verbose_name=_('activation code'), max_length=40,
-        default=make_activation_code
-    )
-
-    subscribed = models.BooleanField(
-        default=False, verbose_name=_('subscribed'), db_index=True
-    )
-    subscribe_date = models.DateTimeField(
-        verbose_name=_("subscribe date"), null=True, blank=True
-    )
-
-    # This should be a pseudo-field, I reckon.
-    unsubscribed = models.BooleanField(
-        default=False, verbose_name=_('unsubscribed'), db_index=True
-    )
-    unsubscribe_date = models.DateTimeField(
-        verbose_name=_("unsubscribe date"), null=True, blank=True
-    )
-
-    frequency = models.IntegerField(choices=FREQUENCY_OPTIONS, default=IMMEDIATE)
-    last_sent_date = models.DateTimeField(null=True, blank=True)
-
-    def __unicode__(self):
-        if self.name:
-            return _(u"%(name)s <%(email)s> to %(newsletter)s") % {
-                'name': self.name,
-                'email': self.email,
-                'newsletter': self.newsletter
-            }
-
-        else:
-            return _(u"%(email)s to %(newsletter)s") % {
-                'email': self.email,
-                'newsletter': self.newsletter
-            }
-
-    class Meta:
-        verbose_name = _('subscription')
-        verbose_name_plural = _('subscriptions')
-        unique_together = ('user', 'email_field', 'newsletter')
-
     def get_recipient(self):
         if self.name:
             return u'%s <%s>' % (self.name, self.email)
@@ -406,6 +422,8 @@ class Subscription(models.Model):
                 'subscriber': self
             }
         )
+
+    
 
     @permalink
     def subscribe_activate_url(self):
@@ -508,6 +526,29 @@ class Message(models.Model):
         verbose_name=_('modified'), auto_now=True, editable=False
     )
 
+    send_date = models.DateTimeField(auto_now_add=True)
+
+    prepared = models.BooleanField(
+        default=False, verbose_name=_('prepared'),
+        db_index=True, editable=False
+    )
+    prepared_date = models.DateTimeField(null=True, blank=True)
+
+    sending = models.BooleanField(
+        default=False, verbose_name=_('sending'),
+        db_index=True, editable=False
+    )
+    sending_date = models.DateTimeField(null=True, blank=True)
+
+
+    sent = models.BooleanField(
+        default=False, verbose_name=_('sent'),
+        db_index=True, editable=False
+    )
+    sent_date = models.DateTimeField(null=True, blank=True)
+
+
+
     def __unicode__(self):
         try:
             return _(u"%(title)s in %(newsletter)s") % {
@@ -538,28 +579,22 @@ class Message(models.Model):
 
         return None
 
+    @classmethod
+    def submit_queue(cls):
+        todo = cls.objects.filter(
+            prepared=True, sent=False, sending=False,
+            send_date__lte=now()
+        )
 
-class Submission(models.Model):
-    """
-    Submission represents a particular Message as it is being submitted
-    to a list of Subscribers. This is where actual queueing and submission
-    happends.
-    """
-    class Meta:
-        verbose_name = _('submission')
-        verbose_name_plural = _('submissions')
-
-    def __unicode__(self):
-        return _(u"%(newsletter)s on %(publish_date)s") % {
-            'newsletter': self.message,
-            'publish_date': self.publish_date
-        }
+        for submission in todo:
+            submission.send()
 
     def prepare_to_send(self):
 
         if self.sent or self.prepared:
             return False
 
+        self.prepared_date = timezone.now()
         self.prepared = True
         self.save()
 
@@ -569,17 +604,19 @@ class Submission(models.Model):
     def send(self):
 
         
-        subscriptions = self.subscriptions.filter(subscribed=True)
-
+        subscriptions = Subscription.objects.filter(newsletter = self.newsletter)
+        subscription_groups = SubscriptionGroup.objects.filter(newsletter = self.newsletter)
+        
         logger.info(
             ugettext(u"Submitting %(submission)s to %(count)d people"),
             {'submission': self, 'count': subscriptions.count()}
         )
 
-        assert self.publish_date < now(), \
+        assert self.send_date < now(), \
             'Something smells fishy; submission time in future.'
 
         self.sending = True
+        self.sending_date = timezone.now()
         self.save()
 
         try:
@@ -588,13 +625,13 @@ class Submission(models.Model):
 
             for subscription in subscriptions:
 
-                self.submit_subscription(subscription, subject_template, text_template, html_template)
+                self.send_subscription(subscription, subject_template, text_template, html_template)
 
-            for group in self.subscription_groups.all():
+            for group in subscription_groups.all():
                 
                 for subscription in group.subscriptions.all():
                     if subscription.subscribed==True:
-                        self.submit_subscription(subscription, subject_template, text_template, html_template)
+                        self.send_subscription(subscription, subject_template, text_template, html_template)
 
             self.sent = True
 
@@ -602,8 +639,10 @@ class Submission(models.Model):
             self.sending = False
             self.save()
 
-    def submit_subscription(self, subscription, subject_template, text_template, html_template):
-        receipt, created = Receipt.objects.get_or_create(submission=self, subscription=subscription)
+    def send_subscription(self, subscription, subject_template, text_template, html_template):
+
+
+        receipt, created = Receipt.objects.get_or_create(message=self, subscription=subscription)
 
         if receipt.sent_status == SENT:
             return
@@ -710,105 +749,8 @@ class Submission(models.Model):
             )
             receipt.sent_status = ERROR_SENDING
             receipt.save()
-
-
-
-    @classmethod
-    def submit_queue(cls):
-        todo = cls.objects.filter(
-            prepared=True, sent=False, sending=False,
-            publish_date__lt=now()
-        )
-
-        for submission in todo:
-            submission.send()
-
-    @classmethod
-    def from_message(cls, message):
-        logger.debug(ugettext('Submission of message %s'), message)
-        submission = cls()
-        submission.message = message
-        submission.newsletter = message.newsletter
-        submission.save()
-        submission.subscriptions = message.newsletter.get_subscriptions()
-        return submission
-
     
 
-    def save(self):
-        """ Set the newsletter from associated message upon saving. """
-        assert self.message.newsletter
-
-        self.newsletter = self.message.newsletter
-
-        return super(Submission, self).save()
-
-    @permalink
-    def get_absolute_url(self):
-        assert self.newsletter.slug
-        assert self.message.slug
-
-        return (
-            'newsletter_archive_detail', (), {
-                'newsletter_slug': self.newsletter.slug,
-                'year': self.publish_date.year,
-                'month': self.publish_date.month,
-                'day': self.publish_date.day,
-                'slug': self.message.slug
-            }
-        )
-
-
-    newsletter = models.ForeignKey(
-        'Newsletter', verbose_name=_('newsletter'), editable=False
-    )
-    message = models.ForeignKey(
-        'Message', verbose_name=_('message'), editable=True,
-        default=Message.get_default_id, null=False
-    )
-
-    subscriptions = models.ManyToManyField(
-        'Subscription',
-        help_text=_('If you select none, the system will automatically find '
-                    'the subscribers for you.'),
-        blank=True, db_index=True, verbose_name=_('recipients'),
-        limit_choices_to={'subscribed': True}
-    )
-
-    #TODO -- need ot limit choices to subscriptions that match this newsletter
-    subscription_groups = models.ManyToManyField('SubscriptionGroup', blank=True, null=True)
-
-    publish_date = models.DateTimeField(
-        verbose_name=_('publication date'), blank=True, null=True,
-        default=now(), db_index=True
-    )
-    publish = models.BooleanField(
-        default=True, verbose_name=_('publish'),
-        help_text=_('Publish in archive.'), db_index=True
-    )
-
-    prepared = models.BooleanField(
-        default=False, verbose_name=_('prepared'),
-        db_index=True, editable=False
-    )
-    sent = models.BooleanField(
-        default=False, verbose_name=_('sent'),
-        db_index=True, editable=False
-    )
-    sending = models.BooleanField(
-        default=False, verbose_name=_('sending'),
-        db_index=True, editable=False
-    )
-
-
-NOT_SENT = 0
-SENT = 1
-ERROR_SENDING = 2
-SENDING_STATUS_CHOICES = (
-    (NOT_SENT, 'Not Sent'),
-    (SENT, 'Sent'),
-    (ERROR_SENDING, 'Error Sending'),
-)
 
 class SubscriptionGroup(models.Model):
 
@@ -819,6 +761,9 @@ class SubscriptionGroup(models.Model):
 
     def __unicode__(self):
         return self.title
+
+    class Meta:
+        ordering = ('title',)
 
 class LinkTrack(models.Model):
 
