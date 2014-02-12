@@ -625,7 +625,7 @@ class Message(models.Model):
             tpl_root + '%(action)s.txt' % tpl_subst,
         ])
 
-        if self.send_html:
+        if self.newsletter.send_html:
             html_template = select_template([
                 tpl_root + '%(newsletter)s/%(message)s/%(action)s.html' % tpl_subst,
                 tpl_root + '%(newsletter)s/%(action)s.html' % tpl_subst,
@@ -662,9 +662,9 @@ class Message(models.Model):
             (subject_template, text_template, html_template) = \
                 self.get_templates('message')
 
-            #for subscription in subscriptions:
+            for subscription in subscriptions:
 
-                #self.send_subscription(subscription, subject_template, text_template, html_template)
+                self.send_subscription(subscription, subject_template, text_template, html_template)
 
            
             self.sent = True
