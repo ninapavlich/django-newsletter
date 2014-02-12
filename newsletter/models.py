@@ -376,7 +376,7 @@ class Subscription(models.Model):
         assert action in ACTIONS, 'Unknown action: %s' % action
 
         (subject_template, text_template, html_template) = \
-            self.newsletter.get_templates(action)
+            self.get_templates(action)
 
         variable_dict = {
             'subscription': self,
@@ -594,6 +594,49 @@ class Message(models.Model):
 
         return True
 
+    def get_templates(self, action):
+        """
+        Return a subject, text, HTML tuple with e-mail templates for
+        a particular action. Returns a tuple with subject, text and e-mail
+        template.
+        """
+
+        assert action in ACTIONS + ('message', ), 'Unknown action: %s' % action
+
+        # Common substitutions for filenames
+        tpl_subst = {
+            'action': action,
+            'newsletter': self.newsletter.slug,
+            'message':self.slug
+        }
+
+        # Common root path for all the templates
+        tpl_root = 'newsletter/message/'
+
+        subject_template = select_template([
+            tpl_root + '%(newsletter)s/%(message)s/%(action)s_subject.txt' % tpl_subst,
+            tpl_root + '%(newsletter)s/%(action)s_subject.txt' % tpl_subst,
+            tpl_root + '%(action)s_subject.txt' % tpl_subst,
+        ])
+
+        text_template = select_template([
+            tpl_root + '%(newsletter)s/%(message)s/%(action)s.txt' % tpl_subst,
+            tpl_root + '%(newsletter)s/%(action)s.txt' % tpl_subst,
+            tpl_root + '%(action)s.txt' % tpl_subst,
+        ])
+
+        if self.send_html:
+            html_template = select_template([
+                tpl_root + '%(newsletter)s/%(message)s/%(action)s.html' % tpl_subst,
+                tpl_root + '%(newsletter)s/%(action)s.html' % tpl_subst,
+                tpl_root + '%(action)s.html' % tpl_subst,
+            ])
+        else:
+            # HTML templates are not required
+            html_template = None
+
+        return (subject_template, text_template, html_template)
+
 
     def send(self):
 
@@ -617,11 +660,11 @@ class Message(models.Model):
 
         try:
             (subject_template, text_template, html_template) = \
-                self.newsletter.get_templates('message')
+                self.get_templates('message')
 
-            for subscription in subscriptions:
+            #for subscription in subscriptions:
 
-                self.send_subscription(subscription, subject_template, text_template, html_template)
+                #self.send_subscription(subscription, subject_template, text_template, html_template)
 
            
             self.sent = True

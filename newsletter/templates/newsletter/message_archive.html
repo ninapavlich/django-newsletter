@@ -9,13 +9,14 @@
     <tr>
         <th>{% trans "Newsletter archive" %} {{ newsletter.title }}</th>
     </tr>
-    {% for submission in latest %}
+    
+    {% for message in newsletter_messages %}
     <tr>
-        <td><a href="{{ submission.get_absolute_url }}">{{ submission }}</a></td>
+        <td><a href="./{{message.slug}}/">{{ message.slug }}</a></td>
     </tr>
     {% endfor %}
     <tr>
-        <td><a href="../">Back to list</a></td>
+        <td><a href="{% url 'newsletter_list' %}">Back to list</a></td>
     </tr>
 </table>
 {% endblock body %}

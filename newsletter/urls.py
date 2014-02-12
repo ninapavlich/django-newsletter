@@ -16,6 +16,19 @@ urlpatterns = patterns(
     surl(r'^receipt/archive/<receipt_slug:s>/', 'newsletter.views.receipt_archive',name='archive_view_tracker' ),
     surl(r'^linktrack/<link_tracker_id:s>/', 'newsletter.views.link_tracker', name='link_tracker' ),
     
+    # Archive views
+    surl(
+        '^archive/<newsletter_slug:s>/<slug:s>/<receipt_slug:s>/$',
+        MessageArchiveDetailView.as_view(), name='newsletter_archive_detail_receipt'
+    ),
+    surl(
+        '^archive/<newsletter_slug:s>/<slug:s>/$',
+        MessageArchiveDetailView.as_view(), name='newsletter_archive_detail'
+    ),
+    surl(
+        '^archive/<newsletter_slug:s>/$',
+        MessageArchiveIndexView.as_view(), name='newsletter_archive'
+    ),
 
     # Newsletter list and detail view
     surl('^$', NewsletterListView.as_view(), name='newsletter_list'),
@@ -84,17 +97,5 @@ urlpatterns = patterns(
         name='newsletter_action_activated'),
 
     
-    # Archive views
-    surl(
-        '^<newsletter_slug:s>/archive/<year:Y>/<month:m>/<day:d>/<slug:s>/<receipt_slug:s>/$',
-        MessageArchiveDetailView.as_view(), name='newsletter_archive_detail_receipt'
-    ),
-    surl(
-        '^<newsletter_slug:s>/archive/<year:Y>/<month:m>/<day:d>/<slug:s>/$',
-        MessageArchiveDetailView.as_view(), name='newsletter_archive_detail'
-    ),
-    surl(
-        '^<newsletter_slug:s>/archive/$',
-        MessageArchiveIndexView.as_view(), name='newsletter_archive'
-    ),
+    
 )

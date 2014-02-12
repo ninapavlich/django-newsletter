@@ -191,6 +191,7 @@ class NewsletterMixin(ProcessUrlDataMixin):
         """ Add newsletter to form kwargs. """
         kwargs = super(NewsletterMixin, self).get_form_kwargs()
 
+
         kwargs['newsletter'] = self.newsletter
         kwargs['receipt'] = self.receipt
 
@@ -590,10 +591,27 @@ class MessageViewBase(NewsletterMixin):
 
 
 class MessageArchiveIndexView(MessageViewBase, ArchiveIndexView):
-    pass
+    
+    def get_context_data(self, **kwargs):
+        """
+        Make sure the actual message is available.
+        """
+        context = \
+            super(MessageArchiveIndexView, self).get_context_data(**kwargs)
+
+        
+        messages = Message.objects.filter(newsletter=self.newsletter)
+        
+       
+        context.update({
+            'newsletter_messages': messages
+        })
+
+        return context
 
 
-class MessageArchiveDetailView(MessageViewBase, DateDetailView):
+class MessageArchiveDetailView(MessageViewBase, DetailView):
+
 
     def get_context_data(self, **kwargs):
         """
@@ -602,7 +620,7 @@ class MessageArchiveDetailView(MessageViewBase, DateDetailView):
         context = \
             super(MessageArchiveDetailView, self).get_context_data(**kwargs)
 
-        
+
         message = self.object
         newsletter = context['newsletter']
         receipt = context['receipt']
@@ -616,7 +634,7 @@ class MessageArchiveDetailView(MessageViewBase, DateDetailView):
             'receipt':receipt,
             'message': message,
             'newsletter': newsletter,            
-            'date': self.object.publish_date,
+            'date': self.object.send_date,
             'STATIC_URL': settings.STATIC_URL,
             'MEDIA_URL': settings.MEDIA_URL,
             'TRACKING_URL' : TRACKING_URL
@@ -628,7 +646,7 @@ class MessageArchiveDetailView(MessageViewBase, DateDetailView):
         """ Get the message template for the current newsletter. """
 
         (subject_template, text_template, html_template) = \
-            self.object.newsletter.get_templates('message')
+            self.object.get_templates('message')
 
         # No HTML -> no party!
         if not html_template:

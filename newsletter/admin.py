@@ -115,7 +115,7 @@ class MessageAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
         message = self._getobj(request, object_id)
 
         (subject_template, text_template, html_template) = \
-            message.newsletter.get_templates('message')
+            message.get_templates('message')
 
         if not html_template:
             raise Http404(_(
@@ -137,7 +137,7 @@ class MessageAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
         message = self._getobj(request, object_id)
 
         (subject_template, text_template, html_template) = \
-            message.newsletter.get_templates('message')
+            message.get_templates('message')
 
         c = Context({
             'message': message,

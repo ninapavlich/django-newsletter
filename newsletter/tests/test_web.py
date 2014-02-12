@@ -1168,7 +1168,7 @@ class ArchiveTestcase(NewsletterListTestCase):
         # otherwise the archive will not function.
 
         (subject_template, text_template, html_template) = \
-            self.newsletter.get_templates('message')
+            self.get_templates('message')
 
         self.assertTrue(html_template)
 
