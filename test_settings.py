@@ -85,15 +85,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 TEMPLATE_CONTEXT_PROCESSORS += (
 )
 
-#EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_USE_TLS = True
-EMAIL_HOST = 'mail.mikeandninawedding.com'
-EMAIL_PORT = 587
-EMAIL_HOST_USER = 'mikeandnina@mikeandninawedding.com'
-EMAIL_HOST_PASSWORD = 'sweetjane13'
-DEFAULT_FROM_EMAIL = 'mikeandnina@mikeandninawedding.com'
-DEFAULT_TO_EMAIL = 'mikeandnina@mikeandninawedding.com'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 
 DATABASES = {
@@ -104,7 +96,7 @@ DATABASES = {
 }
 
 INSTALLED_APPS = [
-    'grappelli.dashboard',
+    
     'grappelli',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -116,12 +108,12 @@ INSTALLED_APPS = [
     'django.contrib.admindocs',
     'django.contrib.sitemaps',
     'django_extensions',
-    'sorl.thumbnail',
     'django_extensions',
-    'sorl.thumbnail',
+
     'imperavi',
     'suit_ckeditor',
     'newsletter',
+    'pytz'
     
 ]
 
@@ -150,6 +142,6 @@ SECRET_KEY = ':LD*@))(D&DS:98ds90l;alKLJD&D;dkjjw8dLD*j3)_'
 
 
 
-NEWSLETTER_RICHTEXT_WIDGET = 'tinymce.widgets.TinyMCE'
+NEWSLETTER_RICHTEXT_WIDGET = 'imperavi.widget.ImperaviWidget' #'tinymce.widgets.TinyMCE'
 
 #imperavi.widget.ImperaviWidge

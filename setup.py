@@ -67,6 +67,5 @@ setup(
         'django-imperavi',
         'django-tinymce',
         'pytz',
-        'PIL'
     ),
 )

@@ -31,58 +31,66 @@ ICON_URLS = {
 }
 
 
-class NewsletterAdmin(admin.ModelAdmin):
-    list_display = (
-        'title', 'admin_subscriptions', 'admin_messages'
-    )
-    prepopulated_fields = {'slug': ('title',)}
-
-    """ List extensions """
-    def admin_messages(self, obj):
-        return '<a href="../message/?newsletter__id__exact=%s">%s</a>' % (
-            obj.id, ugettext('Messages')
-        )
-    admin_messages.allow_tags = True
-    admin_messages.short_description = ''
-
-    def admin_subscriptions(self, obj):
-        return \
-            '<a href="../subscription/?newsletter__id__exact=%s">%s</a>' % \
-            (obj.id, ugettext('Subscriptions'))
-    admin_subscriptions.allow_tags = True
-    admin_subscriptions.short_description = ''
 
 
-class ArticleInline(AdminImageMixin, admin.StackedInline):
-    model = Article
-    extra = 2
-    fieldsets = (
-        (None, {
-            'fields': ('title', 'sortorder', 'text')
-        }),
-        (_('Optional'), {
-            'fields': ('url', 'image'),
-            'classes': ('collapse',)
-        }),
-    )
+
+
+class MessageInlines(admin.TabularInline):
+    model = Message
+    fk_name = "newsletter"
     
-    if newsletter_settings.RICHTEXT_WIDGET:
-        formfield_overrides = {
-            models.TextField: {'widget': newsletter_settings.RICHTEXT_WIDGET},
-        }
-
+    extra = 0
+    max_num = 0
+    fieldsets = (
+        ("", {
+            'fields': (
+                ('title', 'slug', 'date_create', 'prepared','sending','sent',),
+            )
+        }),
+    )
+    def has_delete_permission(self, request, obj=None):
+        return False
+    readonly_fields = ('title', 'slug', 'date_create', 'prepared','sending','sent',)
 
 class MessageAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     save_as = True
     list_display = (
-        '_admin_name','admin_preview', 'date_create',
+        '_admin_name','admin_preview', 'send_date', 'date_create',
         'date_modify'
     )
+    fieldsets = (
+        ('Message', {
+            'fields': (
+                ('title', 'slug'),
+                ('newsletter'),   
+                ('send_date'),   
+                ('text'),          
+            )
+        }),
+        (_('Meta'), {
+            'fields': (
+                ('date_create', 'date_modify'),                
+                ('prepared', 'prepared_date'),
+                ('sending', 'sending_date'),
+                ('sent', 'sent_date')
+            ),
+            'classes': ('grp-collapse grp-closed',)
+        }),
+    )
+
+
     list_filter = ('newsletter', )
     date_hierarchy = 'date_create'
     prepopulated_fields = {'slug': ('title',)}
+    readonly_fields = ('date_create','date_modify', 'prepared', 'prepared_date', 
+        'sending', 'sending_date', 'sent', 'sent_date', )
 
-    inlines = [ArticleInline, ]
+    raw_id_fields = ("newsletter",)
+    autocomplete_lookup_fields = {
+        'fk': ['newsletter'],
+    }
+
+
 
     """ List extensions """
     def admin_title(self, obj):
@@ -249,12 +257,57 @@ class MessageAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
         return my_urls + urls
 
 
+class NewsletterAdmin(admin.ModelAdmin):
+    list_display = (
+        'title', 'admin_subscriptions', 'admin_messages'
+    )
+    prepopulated_fields = {'slug': ('title',)}
+    filter_horizontal = ('site',)
+    inlines = [MessageInlines,]
+
+    """ List extensions """
+    def admin_messages(self, obj):
+        return '<a href="../message/?newsletter__id__exact=%s">%s</a>' % (
+            obj.id, ugettext('Messages')
+        )
+    admin_messages.allow_tags = True
+    admin_messages.short_description = ''
+
+    def admin_subscriptions(self, obj):
+        return \
+            '<a href="../subscription/?newsletter__id__exact=%s">%s</a>' % \
+            (obj.id, ugettext('Subscriptions'))
+    admin_subscriptions.allow_tags = True
+    admin_subscriptions.short_description = ''
+
+    
+
 class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     form = SubscriptionAdminForm
     list_display = (
         '_admin_name', 'admin_subscribe_date',
         'admin_unsubscribe_date', 'admin_status_text', 'admin_status', 'frequency', 'last_sent_date'
     )
+    fieldsets = (
+        ('Message', {
+            'fields': (
+                ('newsletter'),      
+                ('user'),
+                ('frequency', 'subscribed', 'unsubscribed',), 
+            )
+        }),
+        (_('Meta'), {
+            'fields': (
+                'last_sent_date',
+                'subscribe_date',
+                'unsubscribe_date',
+                'activation_code'
+            ),
+            'classes': ('grp-collapse grp-closed',)
+        }),
+    )
+
+
     list_display_links = ('_admin_name',)
     list_filter = (
         'newsletter', 'subscribed', 'unsubscribed', 'subscribe_date', 'frequency'
@@ -267,6 +320,11 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     )
     date_hierarchy = 'subscribe_date'
     actions = ['make_subscribed', 'make_unsubscribed', 're_save']
+
+    raw_id_fields = ("user","newsletter",)
+    autocomplete_lookup_fields = {
+        'fk': ['user', 'newsletter',],
+    }
 
     """ List extensions """
     def admin_newsletter(self, obj):
@@ -391,6 +449,12 @@ class SubscriptionAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
             RequestContext(request, {}),
         )
 
+    actions = ['send_subscription', ]
+
+    def send_subscription(self, request, queryset):
+        for item in queryset:
+            item.send_subscription()
+
     """ URLs """
     def get_urls(self):
         urls = super(SubscriptionAdmin, self).get_urls()
@@ -430,11 +494,7 @@ class ReceiptAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
         'create_date', 'email_viewed', 'email_view_count','archive_viewed', 'archive_view_count', 'sent_status'
     )
 
-    actions = ['re_save', ]
-
-    def re_save(self, request, queryset):
-        for item in queryset:
-            item.save()
+    
 
 
 class LinkTrackAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):

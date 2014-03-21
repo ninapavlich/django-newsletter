@@ -32,7 +32,6 @@ Installation
             # Imperavi (or tinymce) rich text editor is optional
             # 'imperavi',
             'django_extensions',
-            'sorl.thumbnail',
             ...
             'newsletter',
             ...

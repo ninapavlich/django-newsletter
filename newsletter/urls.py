@@ -1,6 +1,6 @@
 from django.conf.urls import patterns
 
-from surlex.dj import surl
+from  surlex.dj import surl
 
 from .views import (
     NewsletterListView, NewsletterDetailView,
@@ -12,9 +12,9 @@ from .views import (
 urlpatterns = patterns(
     '',
 
-    surl(r'^receipt/email/<receipt_slug:s>/', 'newsletter.views.receipt_email',name='email_view_tracker' ),
-    surl(r'^receipt/archive/<receipt_slug:s>/', 'newsletter.views.receipt_archive',name='archive_view_tracker' ),
-    surl(r'^linktrack/<link_tracker_id:s>/', 'newsletter.views.link_tracker', name='link_tracker' ),
+    surl(r'^receipt/email/<receipt_slug:s>.png', 'newsletter.views.receipt_email',name='email_view_tracker' ),
+    surl(r'^receipt/archive/<receipt_slug:s>.png', 'newsletter.views.receipt_archive',name='archive_view_tracker' ),
+    surl(r'^linktrack/<link_tracker_id:s>', 'newsletter.views.link_tracker', name='link_tracker' ),
     
     # Archive views
     surl(
@@ -56,7 +56,7 @@ urlpatterns = patterns(
         name='newsletter_update_request'
     ),
     surl(
-        '^<newsletter_slug:s>/unsubscribe/<receipt_slug:s>/$',
+        '^<newsletter_slug:s>/unsubscribe/<user_pk:s>/$',
         UnsubscribeRequestView.as_view(),
         name='newsletter_unsubscribe_request'
     ),

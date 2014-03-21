@@ -1,0 +1,30 @@
+{% load url from future %}{% load newsletter_tags %}<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+
+<html lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>{{ newsletter.title }}: {{ message.title }}</title>
+</head>
+<body>
+
+    <h1>{{ newsletter.title }}</h1>
+    
+    
+    {% if subscription.get_name %}
+    <strong>Dear {{subscription.get_name}},</strong>
+    {% endif %}
+
+    {% for receipt in receipts %}
+
+    {% get_message_email receipt as message_email %}
+    {{ message_email|safe }}
+    {% endfor %}
+
+
+    <ul>
+        <li><a href="http://{{ site.domain }}{{ UNSUBSCRIBE_URL }}">Unsubscribe</a></li>        
+    </ul>
+
+</body>
+</html>

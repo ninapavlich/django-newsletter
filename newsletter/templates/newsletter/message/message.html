@@ -1,49 +1,10 @@
-{% load url from future %}{% load thumbnail %}<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
+{% load url from future %}{% load newsletter_tags %}
 
-<html lang="en">
-<head>
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-	<title>{{ newsletter.title }}: {{ message.title }}</title>
-</head>
-<body>
+{% get_message_archive_url receipt as archive_url %}
 
-    <h1>{{ newsletter.title }}</h1>
-    <h2>{{ message.title }}</h2>
+<h2>{{ message.title }}</h2>
+{{ message.text|safe }}
 
-    {% if subscription.get_name %}
-    <strong>Dear {{subscription.get_name}},</strong>
-    {% endif %}
+<a href="http://{{ site.domain }}{{ archive_url }}">Read message online</a></li>
 
-    {% for article in message.articles.all %}
-        <h3>{{ article.title }}</h3>
-        
-        {% thumbnail article.image "200x200" as image %}
-            <img src="http://{{ site.domain }}{{ image.url }}" width="{{ image.width }}" height="{{ image.height }}">
-        {% endthumbnail %}
-
-        <div>{{ article.text|safe }}</div>
-        
-        {% if article.url %}
-            <div><a href="{{ article.url }}">Read more</div></a>
-        {% endif %}
-    {% endfor %}
-    
-    <ul>
-        {% if submission.publish %}
-
-        {% if receipt %}
-        <li><a href="http://{{ site.domain }}{{ receipt.get_archive_url }}">Read message online</a></li>
-        <li><a href="http://{{ site.domain }}{{ receipt.get_unsubscribe_url }}">Unsubscribe</a></li>
-        {% else %}
-        <li><a href="http://{{ site.domain }}{{ submission.get_absolute_url }}">Read message online</a></li>
-        {% endif %}
-        {% endif %}
-       
-    </ul>
-
-    {% if TRACKING_URL %}
-    <img src="{{TRACKING_URL}}" alt="Email View Counter" />
-    {% endif %}
-</body>
-</html>
+<img src="{{receipt.get_full_email_tracking_url}}" alt="" />

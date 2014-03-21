@@ -626,7 +626,6 @@ class MessageArchiveDetailView(MessageViewBase, DetailView):
         receipt = context['receipt']
         TRACKING_URL =  context['receipt'].get_full_archive_tracking_url() if context['receipt'] else None
         subscription = context['receipt'].subscription if context['receipt'] else None
-        
        
         context.update({
             'subscription': subscription,
@@ -645,7 +644,7 @@ class MessageArchiveDetailView(MessageViewBase, DetailView):
     def get_template(self):
         """ Get the message template for the current newsletter. """
 
-        (subject_template, text_template, html_template) = \
+        (text_template, html_template) = \
             self.object.get_templates('message')
 
         # No HTML -> no party!
@@ -670,11 +669,8 @@ class MessageArchiveDetailView(MessageViewBase, DetailView):
         )
 
 def output_receipt_image():
-    #if settings.DEBUG:
-    #    img = Image.new("RGB", (10,10), "#FF00FF")
-    #else:
-    img = Image.new("RGB", (1,1), "#FFFFFF")
-    
+
+    img = Image.new("RGB", (1,1), "#ffffff")
     response = HttpResponse(mimetype="image/png")
     img.save(response, "PNG")
     return response

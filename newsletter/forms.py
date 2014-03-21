@@ -14,7 +14,7 @@ class NewsletterForm(forms.ModelForm):
 
     class Meta:
         model = Subscription
-        fields = ('name_field', 'email_field')
+        
 
     def __init__(self, *args, **kwargs):
 
@@ -43,45 +43,7 @@ class SubscribeRequestForm(NewsletterForm):
     subscription.
     """
 
-    def clean_email_field(self):
-        data = self.cleaned_data['email_field']
-
-        if not data:
-            raise ValidationError(_("An e-mail address is required."))
-
-        # Check whether we should be subscribed to as a user
-        try:
-            user = User.objects.get(email__exact=data)
-
-            raise ValidationError(_(
-                "The e-mail address '%(email)s' belongs to a user with an "
-                "account on this site. Please log in as that user "
-                "and try again."
-            ) % {'email': user.email})
-
-        except User.DoesNotExist:
-            pass
-
-        # Check whether we have already been subscribed to
-        try:
-            subscription = Subscription.objects.get(
-                email_field__exact=data,
-                newsletter=self.instance.newsletter
-            )
-
-            if subscription.subscribed and not subscription.unsubscribed:
-                raise ValidationError(
-                    _("Your e-mail address has already been subscribed to.")
-                )
-            else:
-                self.instance = subscription
-
-            self.instance = subscription
-
-        except Subscription.DoesNotExist:
-            pass
-
-        return data
+    
 
 
 class UpdateRequestForm(NewsletterForm):
@@ -90,8 +52,8 @@ class UpdateRequestForm(NewsletterForm):
     email being sent.
     """
 
-    class Meta(NewsletterForm.Meta):
-        fields = ('email_field',)
+    #class Meta(NewsletterForm.Meta):
+        #fields = ('email_field',)
 
     def clean(self):
         if not self.instance.subscribed:
@@ -101,39 +63,7 @@ class UpdateRequestForm(NewsletterForm):
 
         return super(UpdateRequestForm, self).clean()
 
-    def clean_email_field(self):
-        data = self.cleaned_data['email_field']
-
-        if not data:
-            raise ValidationError(_("An e-mail address is required."))
-
-        # Check whether we should update as a user
-        try:
-            user = User.objects.get(email__exact=data)
-
-            raise ValidationError(
-                _("This e-mail address belongs to the user '%(username)s'. "
-                  "Please log in as that user and try again.")
-                % {'username': user.username}
-            )
-
-        except User.DoesNotExist:
-            pass
-
-        # Set our instance on the basis of the email field, or raise
-        # a validationerror
-        try:
-            self.instance = Subscription.objects.get(
-                newsletter=self.instance.newsletter,
-                email_field__exact=data
-            )
-
-        except Subscription.DoesNotExist:
-                raise ValidationError(
-                    _("This e-mail address has not been subscribed to.")
-                )
-
-        return data
+    
 
 
 class UnsubscribeRequestForm(UpdateRequestForm):
