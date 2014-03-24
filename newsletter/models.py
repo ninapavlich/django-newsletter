@@ -341,7 +341,7 @@ class Subscription(models.Model):
 
 	def get_recipient(self):
 		if self.user:
-			return u'%s <%s>' % (self.get_name, self.get_email)
+			return u'%s <%s>' % (self.get_name(), self.get_email())
 
 		return None
 
@@ -416,6 +416,8 @@ class Subscription(models.Model):
 		# Common root path for all the templates
 		tpl_root = 'newsletter/message/'
 
+		#print "tpl_subst: "+str(tpl_subst)
+
 		subject_template = select_template([
 			tpl_root + '%(newsletter)s/%(action)s_subject.txt' % tpl_subst,
 			tpl_root + '%(action)s_subject.txt' % tpl_subst,
@@ -437,12 +439,14 @@ class Subscription(models.Model):
 
 		return (subject_template, text_template, html_template)
 
-	def send_subscription(self):
-		
+	def send_subscription(self, messages=None):
+		print "Send subscription to "+str(self.user)
 		if self.subscribed == False:
+			print "User has not yet subscribed"
 			return
 
 		if self.unsubscribed == True:
+			print "User has unsubscribed"
 			return
 
 			
@@ -476,11 +480,16 @@ class Subscription(models.Model):
 		else:
 			timing_is_right = True
 			
+
 		if timing_is_right == False:
+			print "Timing isn't right"
 			return
 		
 
-		all_subscription_messages = Message.objects.filter(newsletter=self.newsletter, send_date__lte=now())
+		if messages:
+			all_subscription_messages = Message.objects.filter(pk__in=messages)
+		else:
+			all_subscription_messages = Message.objects.filter(newsletter=self.newsletter, send_date__lte=now())
 		
 		message_receipts_to_send = []
 		messages_to_send = []
@@ -495,6 +504,8 @@ class Subscription(models.Model):
 				message.sending_date = now()
 				message.save()
 
+		print "messages_to_send: "+str(messages_to_send)
+
 		if len(messages_to_send) == 0:
 			return
 
@@ -506,6 +517,9 @@ class Subscription(models.Model):
 		(subject_template, text_template, html_template) = \
 			self.get_templates('newsletter')
 
+		print "subject_template: "+str(subject_template)
+		print "text_template: "+str(text_template)
+		print "html_template: "+str(html_template)
 
 		variable_dict = {
 			'subscription': self,
@@ -522,7 +536,7 @@ class Subscription(models.Model):
 		subject = subject_template.render(unescaped_context).strip()
 		text = text_template.render(unescaped_context)
 
-
+		print "SEND FROM "+str(self.newsletter.get_sender())+" TO: "+str(self.get_recipient())+" SUBJECT: "+str(subject)
 		email_message = EmailMultiAlternatives(
 			subject, text,
 			from_email=self.newsletter.get_sender(),
@@ -533,7 +547,20 @@ class Subscription(models.Model):
 			escaped_context = Context(variable_dict)
 			rendered_html = html_template.render(escaped_context)
 
-			
+			#print "HTML MESSAGE: "+str(rendered_html)
+
+			"""
+
+			if self.newsletter.track_links:
+				soup = BeautifulSoup(rendered_html)
+				all_links = soup.find_all("a")            
+				for link in all_links:
+					if link.has_attr('href'):
+						link_tracker, created = LinkTrack.objects.get_or_create(message=self, subscription=receipt.subscription, url=link['href'])
+						link['href'] = link_tracker.get_tracker_url()
+
+			rendered_html = soup.prettify()
+			"""
 
 			email_message.attach_alternative(
 				rendered_html,
@@ -544,9 +571,7 @@ class Subscription(models.Model):
 			logger.debug(
 				ugettext(u'Submitting message to: %s.'),
 				self
-			)
-
-			
+			)			
 			
 			email_message.send()
 
@@ -566,6 +591,8 @@ class Subscription(models.Model):
 				{'subscription': self,
 				 'error': e}
 			)
+
+			print "ERRORS: error: %s"%(e)
 
 			for receipt in message_receipts_to_send:
 				receipt.sent_status = ERROR_SENDING
@@ -752,15 +779,6 @@ class Message(models.Model):
 		escaped_context = Context(variable_dict)
 		rendered_html = html_template.render(escaped_context)
 
-		if self.newsletter.track_links:
-			soup = BeautifulSoup(rendered_html)
-			all_links = soup.find_all("a")            
-			for link in all_links:
-				if link.has_attr('href'):
-					link_tracker, created = LinkTrack.objects.get_or_create(message=self, subscription=receipt.subscription, url=link['href'])
-					link['href'] = link_tracker.get_tracker_url()
-
-			rendered_html = soup.prettify()
 
 		return rendered_html
 

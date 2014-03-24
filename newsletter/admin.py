@@ -217,7 +217,11 @@ class MessageAdmin(admin.ModelAdmin, ExtendibleModelAdminMixin):
     def submit(self, request, object_id):
         message = self._getobj(request, object_id)
 
-        message.send()
+        subscriptions = Subscription.objects.filter(newsletter = message.newsletter)
+        for subscription in subscriptions:
+            
+            subscription.send_subscription([message.pk])
+            
 
         messages.info(request, ugettext("Message sent."))
         return HttpResponseRedirect('../')

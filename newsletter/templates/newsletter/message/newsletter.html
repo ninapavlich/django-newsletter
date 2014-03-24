@@ -20,7 +20,6 @@
 
     {% get_message_email receipt as message_email %}
     {{ message_email|safe }}
-    <img src="{{receipt.get_full_email_tracking_url}}" alt="" />
 
     {% endfor %}
 
